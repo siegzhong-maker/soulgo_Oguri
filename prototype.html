@@ -15,6 +15,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            min-height: 100dvh;
             margin: 0;
             font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
         }
@@ -23,6 +24,7 @@
             width: 100%;
             max-width: 414px; 
             height: 100vh;
+            height: 100dvh;
             max-height: 896px;
             background-color: #fffaf0; 
             position: relative;
@@ -30,6 +32,7 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
         }
 
         @media (min-width: 420px) {
@@ -74,12 +77,28 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             text-align: center;
-            aspect-ratio: 1 / 1.25;
+            min-height: 100px;
+            height: 100%;
             padding: 0.5rem;
             font-size: 11px;
             font-weight: bold;
+        }
+        .cabinet-slot__media {
+            width: 100%;
+            height: 52px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+        .cabinet-slot__media img {
+            max-height: 100%;
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
         }
         .cabinet-slot--empty {
             color: #8d7f73;
@@ -87,15 +106,31 @@
         .cabinet-empty-icon {
             font-size: 1.8rem;
             color: #8d7f73;
-            margin-bottom: 0.25rem;
             opacity: 0.6;
         }
-        .cabinet-slot img { 
-            width: 100%;
-            height: auto;
-            max-height: 60%;
-            object-fit: contain;
-            margin-bottom: 4px;
+        /* 橱柜弹窗网格：3 列 4 行等高，格子统一高度 */
+        .cabinet-modal-grid-equal-rows {
+            grid-template-rows: repeat(4, 1fr);
+        }
+        /* 橱柜弹窗网格：3 行等高，格子统一高度（宠物房内嵌用） */
+        .cabinet-grid-equal-rows {
+            grid-template-rows: repeat(3, 1fr);
+        }
+        /* 橱柜物品名称两行截断（Tailwind 未提供 line-clamp 时的备用） */
+        .cabinet-slot .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        /* 橱柜物品名称三行截断 */
+        .cabinet-slot .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         /* 导航切换动画 */
@@ -174,6 +209,25 @@
             50% { transform: translate(-50%, -4px) scale(1.02); }
         }
         .pet-breathe { animation: breathe 3s ease-in-out infinite; }
+        
+        /* 心跳共鸣背景动画 */
+        @keyframes heartbeatBg {
+            0%, 100% { background-color: rgba(255, 250, 240, 1); }
+            50% { background-color: rgba(255, 240, 245, 1); } /* 微红暖色 */
+        }
+        .heartbeat-bg-active {
+            animation: heartbeatBg 2s ease-in-out infinite;
+        }
+
+        /* 能量传递长按动画：只做光晕，不改变几何尺寸/位置 */
+        @keyframes energyFlow {
+            0% { box-shadow: 0 0 0 0 rgba(255, 143, 171, 0.4); transform: translateX(-50%) scale(1); }
+            50% { box-shadow: 0 0 20px 10px rgba(255, 143, 171, 0.2); transform: translateX(-50%) scale(1.05); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 143, 171, 0); transform: translateX(-50%) scale(1); }
+        }
+        .energy-charging {
+            animation: energyFlow 1.5s ease-in-out infinite;
+        }
         
         /* 宠物不同状态的身体动效（作用于图片本身） */
         @keyframes petIdleMotion {
@@ -342,23 +396,23 @@
         #personality-display {
             background: rgba(255, 255, 255, 0.9);
             border-radius: 16px;
-            padding: 8px 12px;
+            padding: 4px 8px;
             border: 1px solid #e5e7eb;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             transition: all 0.3s ease;
         }
         .personality-icon {
-            width: 32px;
-            height: 32px;
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 14px;
             background: #f3f4f6;
         }
         .personality-info {
@@ -382,6 +436,11 @@
             border-radius: 4px;
         }
 
+        /* 顶部信息区内部卡片 & 可收起区域 */
+        #pet-info-panel-toggle {
+            cursor: pointer;
+        }
+
         /* 盲盒按钮动画 */
         @keyframes shake {
             0% { transform: rotate(0deg); }
@@ -394,8 +453,24 @@
             animation: shake 0.5s ease-in-out infinite;
         }
 
-        /* 气泡小尾巴与气泡同步显隐 */
+        /* 气泡小尾巴与气泡同步显隐（旧实现保留但默认隐藏） */
         .bubble-tail { pointer-events: none; }
+
+        /* 底部固定对话栏：默认隐藏，通过 .visible 控制显隐 */
+        #pet-dialog-bar {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        #pet-dialog-bar.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 旧房间内跟随气泡默认不展示，由底部对话栏替代 */
+        #pet-action-bubble,
+        .bubble-tail {
+            display: none;
+        }
 
         /* 宠物页入场：房间卡片与宠物轻微动画 */
         .page-view#view-petroom.entrance .room-viewport-entrance {
@@ -413,16 +488,137 @@
             to { opacity: 1; transform: translate(-50%, 0) scale(1); }
         }
 
-        /* 宠物 Tab 全页底图铺满 */
-        #room-scene {
-            /* 移除背景图样式，改用 img 标签 */
+        /* 能量传递按钮区域 */
+        #energy-fingerprint-area {
+            position: absolute;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            transform-origin: center center;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
+        #energy-fingerprint-area:active, #energy-fingerprint-area.active {
+            /* 保持位置不动，只做高亮效果 */
+            transform: translateX(-50%);
+            background: rgba(255, 143, 171, 0.2);
+            border-color: rgba(255, 143, 171, 0.6);
+        }
+        #energy-fingerprint-icon {
+            font-size: 32px;
+            color: rgba(255, 143, 171, 0.6);
+            transition: all 0.3s ease;
+        }
+        #energy-fingerprint-area.active #energy-fingerprint-icon {
+            color: rgba(255, 143, 171, 1);
+            transform: scale(1.1);
+        }
+        
+        /* 能量粒子容器 */
+        #energy-particles {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 45;
+            overflow: hidden;
+        }
+        .energy-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #fff, #ff8fab);
+            border-radius: 50%;
+            opacity: 0;
+            animation: flyToPet 1s ease-out forwards;
+        }
+        @keyframes flyToPet {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.5); }
         }
         #view-petroom .petroom-top-bar {
-            background: linear-gradient(to bottom, rgba(255,248,235,0.92) 0%, rgba(255,248,235,0.75) 100%);
-            backdrop-filter: blur(8px);
+            background: none;
+            backdrop-filter: none;
+            padding-top: 8px;
+            padding-bottom: 4px;
+        }
+        #view-petroom .petroom-top-bar-inner {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 6px 16px 8px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
         }
         #view-petroom .petroom-bottom-hint {
-            background: linear-gradient(to top, rgba(255,248,235,0.9), transparent);
+            display: none;
+        }
+
+        /* 顶部信息区内部卡片 & 上拉操作区 */
+        #pet-info-panel-toggle {
+            cursor: pointer;
+        }
+        #pet-info-drag-area {
+            margin-top: 6px;
+            height: 6px;
+            width: 64px;
+            border-radius: 999px;
+            background: rgba(255, 192, 203, 0.6);
+            cursor: pointer;
+        }
+
+
+        /* 拍立得照片墙样式 */
+        .polaroid-photo {
+            background: #fff;
+            padding: 3px 3px 8px 3px;
+            box-shadow: 1px 1px 4px rgba(0,0,0,0.15);
+            transform: rotate(var(--rotate));
+            transition: transform 0.2s ease, z-index 0s;
+            cursor: pointer;
+            pointer-events: auto;
+            width: 36px;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: absolute; /* 绝对定位以便随意贴 */
+        }
+        .polaroid-photo:hover {
+            transform: scale(1.8) rotate(0deg) !important;
+            z-index: 100;
+            box-shadow: 4px 4px 16px rgba(0,0,0,0.2);
+        }
+        .polaroid-photo img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            background: #eee;
+            margin-bottom: 2px;
+            border: 1px solid #f0f0f0;
+        }
+        .polaroid-photo span {
+            font-size: 5px;
+            color: #555;
+            line-height: 1;
+            transform: scale(0.85);
+            white-space: nowrap;
+            overflow: hidden;
+            max-width: 100%;
         }
     </style>
 </head>
@@ -463,7 +659,7 @@
         </div>
 
         <!-- 特殊目的地场景预览（例如：埃及金字塔） -->
-        <div id="scene-preview" class="mt-2 hidden flex-shrink-0">
+        <div id="scene-preview" class="mt-2 mb-3 hidden flex-shrink-0">
             <!-- 由 JS 在打卡特定地点后填充卡片内容 -->
         </div>
 
@@ -491,32 +687,78 @@
     <!-- ===== 视图 2：宠物页（宠物之家 + 橱柜 + 日记） ===== -->
     <div id="view-petroom" class="page-view active relative p-0 h-full min-h-0 overflow-hidden">
         <!-- 顶部栏：标题 + 状态 + 性格，半透明便于底图透出 -->
-        <div class="petroom-top-bar absolute top-0 left-0 w-full z-10 pointer-events-none px-4 pt-4 pb-2 flex-shrink-0">
-            <header class="text-center">
-                <h1 class="text-2xl cute-font text-gray-800 flex justify-center items-center gap-2">
-                    <i class="ph-fill ph-house text-[#ffb5a7]"></i> 宠物小屋
-                </h1>
-            </header>
-            <div id="pet-status-bar" class="mt-1 mb-2 text-center text-xs font-bold text-gray-600">
-                比卡丘在准备出发～
-            </div>
-            
-            <!-- 人格盲盒与状态展示 -->
-            <div class="flex flex-col items-center gap-2 pointer-events-auto">
-                <div id="personality-display" class="hidden">
-                    <div class="personality-icon" id="p-icon">✨</div>
-                    <div class="personality-info">
-                        <div class="personality-name" id="p-name">未知人格</div>
-                        <div class="personality-tags" id="p-tags">
-                            <span class="personality-tag" id="p-tag1">未知</span>
-                            <span class="personality-tag" id="p-tag2">未知</span>
+        <div class="petroom-top-bar absolute top-0 left-0 w-full z-10 pointer-events-none px-4 pt-4 pb-3 flex-shrink-0">
+            <div class="petroom-top-bar-inner inline-flex flex-col items-center gap-1 pointer-events-auto">
+                <header class="w-full flex items-center justify-between gap-2">
+                    <div class="w-10 flex-shrink-0" aria-hidden="true"></div>
+                    <h1 class="text-2xl cute-font text-gray-800 flex justify-center items-center gap-2 flex-1 min-w-0">
+                        <i class="ph-fill ph-house text-[#ffb5a7]"></i> 宠物小屋
+                    </h1>
+                    <button type="button" id="btn-memory" class="flex-shrink-0 w-10 h-10 rounded-full bg-[#a8d8ea] hover:bg-[#8ecae6] text-[#2d6a8a] flex items-center justify-center shadow-md transition-colors active:scale-95" title="宠物记忆" aria-label="打开宠物记忆">
+                        <i class="ph-fill ph-book-open text-lg"></i>
+                    </button>
+                </header>
+                <div id="pet-status-bar" class="mt-1 text-center text-xs font-bold text-gray-600">
+                    比卡丘在准备出发～
+                </div>
+                <!-- 顶部信息区：人格 + 盲盒 + 可收起的称呼设置 -->
+                <div class="mt-1 flex flex-col items-center gap-1 w-full">
+                    <!-- 人格盲盒与状态展示 -->
+                    <div id="personality-display" class="hidden">
+                        <div class="personality-icon" id="p-icon">✨</div>
+                        <div class="personality-info">
+                            <div class="personality-name" id="p-name">未知人格</div>
+                            <div class="personality-tags" id="p-tags">
+                                <span class="personality-tag" id="p-tag1">未知</span>
+                                <span class="personality-tag" id="p-tag2">未知</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btn-blind-box" class="bg-gradient-to-r from-[#ff9a9e] to-[#fad0c4] text-white px-3 py-1.5 rounded-full text-[11px] font-bold shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-1">
+                        <i class="ph-fill ph-gift"></i> 重抽人格盲盒
+                    </button>
+
+                    <div class="mt-1 flex flex-col items-center gap-1 w-full">
+                        <button
+                            id="pet-info-panel-toggle"
+                            type="button"
+                            class="inline-flex items-center gap-1 text-[10px] text-[#ff8fab] px-2 py-0.5 rounded-full bg-white/80 border border-[#ffcad4]"
+                        >
+                            <span id="pet-info-toggle-text">展开称呼设置</span>
+                            <i class="ph-bold ph-caret-down text-[10px]"></i>
+                        </button>
+                        <!-- 上拉操作区：向上滑动或点击进入“仅操作区”模式 -->
+                        <div id="pet-info-drag-area"></div>
+                    </div>
+
+                    <!-- 宠物对你的称呼配置区（可收起） -->
+                    <div id="owner-title-config" class="mt-1 text-[11px] text-gray-600 flex flex-col items-center gap-1">
+                        <div class="flex items-center gap-1">
+                            <span class="font-bold text-gray-700">宠物平时怎么称呼你？</span>
+                            <span id="owner-title-current" class="px-2 py-0.5 rounded-full bg-white/80 text-[#ff8fab] text-[11px] font-bold border border-[#ffcad4]">
+                                伙伴
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap justify-center gap-1 mt-1">
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="爸爸">爸爸</button>
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="妈妈">妈妈</button>
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="训练家">训练家</button>
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="伙伴">伙伴</button>
+                            <button type="button" class="owner-title-option px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 text-[11px]" data-title="铲屎官">铲屎官</button>
+                        </div>
+                        <div class="mt-1 flex items-center gap-1">
+                            <span class="text-gray-500">自定义</span>
+                            <input
+                                id="owner-title-input"
+                                type="text"
+                                maxlength="8"
+                                placeholder="如：训练家"
+                                class="px-2 py-0.5 rounded-full border border-gray-200 text-center text-[11px] w-24 bg-white/80 placeholder-gray-400"
+                            >
                         </div>
                     </div>
                 </div>
-                
-                <button id="btn-blind-box" class="bg-gradient-to-r from-[#ff9a9e] to-[#fad0c4] text-white px-4 py-2 rounded-full text-xs font-bold shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-1">
-                    <i class="ph-fill ph-gift"></i> 重抽人格盲盒
-                </button>
             </div>
         </div>
         <select id="pet-personality" class="hidden" aria-hidden="true">
@@ -526,11 +768,19 @@
             <option value="小石头">小石头</option>
         </select>
 
+        <!-- 底部抽屉旧实现：已迁移到顶部信息区，这里保留一个占位容器以避免 JS 引用报错 -->
+        <div id="pet-bottom-sheet" class="hidden"></div>
+
         <!-- 房间区域：铺满剩余空间，底图由 view-petroom 背景提供 -->
         <div id="room-viewport" class="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center touch-none room-viewport-entrance z-0">
             <div id="room-scene" class="absolute top-0 left-0 h-full w-auto flex justify-center items-center" style="transform-origin: 0 0;">
                 <!-- 房间背景图：高度自适应，宽度允许超出 -->
                 <img id="room-scene-bg" src="场景/场景.png" alt="房间背景" class="h-full w-auto max-w-none block select-none pointer-events-none object-cover">
+
+                <!-- 照片墙：位于房间背景墙上，用于粘贴拍立得照片 -->
+                <div id="memory-wall" class="absolute top-[20%] left-[10%] w-[30%] h-[25%] flex flex-wrap gap-2 content-start pointer-events-none z-20">
+                    <!-- JS 动态插入照片 -->
+                </div>
 
                 <!-- 宠物主体 -->
                 <div id="pet-avatar-room" class="absolute bottom-[20%] left-[60%] drop-shadow-2xl z-40 pet-breathe pet-can-move cursor-pointer pointer-events-auto" style="transform: translateX(-50%);">
@@ -539,7 +789,7 @@
                 
                 <!-- 互动气泡 -->
                 <div id="pet-action-bubble" class="absolute bottom-[48%] left-[50%] bubble-float bg-white/95 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-xl text-sm font-bold text-gray-700 whitespace-nowrap z-50 border-2 border-[#ff8fab] transition-all duration-300 pointer-events-none opacity-0" style="transform: translateX(-50%);">
-                    在等和你一起去旅行～ ✨
+                    正在期待旅行... ✨
                 </div>
                 <div class="absolute bottom-[46%] left-[50%] w-3 h-3 bg-white border-r-2 border-b-2 border-[#ff8fab] z-40 pointer-events-none bubble-tail opacity-0 transition-opacity duration-300" style="transform: translateX(-50%) rotate(45deg);"></div>
 
@@ -597,30 +847,37 @@
             </div>
         </div>
 
+        <!-- 固定底部对话栏：用于展示比卡丘当前对话，不随房间拖拽/缩放移动 -->
+        <div id="pet-dialog-bar" class="pointer-events-none opacity-0 transform transition-all duration-300 ease-out absolute left-4 right-4 bottom-24 z-40">
+            <div class="bg-white/95 backdrop-blur-md rounded-3xl shadow-xl border-2 border-[#ff8fab] px-4 py-2 flex items-start gap-2 max-w-2xl mx-auto">
+                <div class="text-lg leading-none mt-0.5">💬</div>
+                <p id="pet-dialog-text" class="text-sm sm:text-base font-bold text-gray-700 leading-relaxed break-words">
+                    正在期待旅行... ✨
+                </p>
+            </div>
+        </div>
+
         <!-- 首次进入引导 -->
         <p id="room-hint" class="absolute top-28 left-0 w-full z-10 text-center text-[10px] text-gray-500 mt-1 transition-opacity duration-500 flex-shrink-0 pointer-events-none" style="text-shadow: 0 1px 2px rgba(255,255,255,0.8);">左右滑动、双指缩放可查看小屋</p>
 
-        <!-- 外置操作栏（保留，与场景内热点二选一或并用） -->
-        <div id="petroom-action-bar" class="absolute bottom-16 left-4 right-4 z-10 glass-card rounded-2xl p-3 mx-4 mt-2 mb-2 flex justify-around items-center gap-2 flex-shrink-0 pointer-events-auto">
-            <button type="button" id="action-rest" class="petroom-action-btn flex flex-col items-center gap-1 min-h-[44px] justify-center flex-1 rounded-xl py-2 transition-transform active:scale-95" aria-label="休息">
-                <span class="text-xl">🛏️</span>
-                <span class="text-[11px] font-bold text-gray-700">休息</span>
-            </button>
-            <button type="button" id="action-cabinet" class="petroom-action-btn flex flex-col items-center gap-1 min-h-[44px] justify-center flex-1 rounded-xl py-2 relative transition-transform active:scale-95" aria-label="打开旅行橱柜">
-                <span class="text-xl relative"><span id="action-cabinet-badge" class="absolute -top-1 -right-1 w-2 h-2 bg-[#9bdeac] rounded-full hidden"></span>🎁</span>
-                <span class="text-[11px] font-bold text-gray-700">橱柜</span>
-            </button>
-            <button type="button" id="action-diary" class="petroom-action-btn flex flex-col items-center gap-1 min-h-[44px] justify-center flex-1 rounded-xl py-2 relative transition-transform active:scale-95" aria-label="打开旅行日记">
-                <span class="text-xl relative"><span id="action-diary-badge" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full hidden"></span>📚</span>
-                <span class="text-[11px] font-bold text-gray-700">日记</span>
-            </button>
+        <!-- 外置操作栏：保留休息与橱柜，将日记移入场景热点，新增能量按钮 -->
+        <div id="petroom-action-bar" class="absolute bottom-16 left-4 right-4 z-10 glass-card rounded-2xl p-2 mx-4 mt-2 mb-2 flex justify-between items-center gap-2 flex-shrink-0 pointer-events-auto" style="display: none;">
+             <!-- 旧版操作栏已隐藏，改用全新的交互布局 -->
         </div>
 
-        <p class="petroom-bottom-hint absolute bottom-0 left-0 w-full z-10 text-center text-[10px] text-gray-600 py-2 px-4 pointer-events-none"><i class="ph-fill ph-info"></i> 宠物状态会根据你的旅行和它的性格变化哦~</p>
+        <!-- 能量指纹区：位于屏幕底部中央 -->
+        <div id="energy-fingerprint-area" class="pointer-events-auto" aria-label="长按传递能量">
+             <i class="ph-fill ph-fingerprint" id="energy-fingerprint-icon"></i>
+        </div>
+        
+        <!-- 能量粒子层 -->
+        <div id="energy-particles"></div>
+
+        <p class="petroom-bottom-hint absolute bottom-0 left-0 w-full z-10 text-center text-[10px] text-gray-600 py-2 px-4 pointer-events-none opacity-50"><i class="ph-fill ph-info"></i> 长按指纹传递能量，点击场景发现惊喜</p>
 
         <!-- 隐藏容器：承载旅行橱柜与旅行日记内容，正常视图中不展示 -->
         <div id="petroom-hidden-containers" class="hidden">
-            <div id="cabinet-grid" class="cabinet-shelf grid grid-cols-4 grid-rows-3 gap-2 min-h-[240px]">
+            <div id="cabinet-grid" class="cabinet-shelf grid grid-cols-4 grid-rows-3 cabinet-grid-equal-rows gap-2 min-h-[240px]">
                 <!-- 12 格由 JS renderCabinetGrid() 渲染 -->
             </div>
 
@@ -637,6 +894,9 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 日记插图上传 input（所有日记共用） -->
+            <input id="diary-image-input" type="file" accept="image/*" class="hidden">
         </div>
     </div>
     </div>
@@ -662,10 +922,33 @@
         locations: [],
         cabinetItems: [],
         petPersonality: '小火苗', // 默认人格
-        currentActionInterval: null
+        currentActionInterval: null,
+        // 宠物对用户的称呼（如：爸爸、妈妈、训练家、伙伴）
+        ownerTitle: '伙伴',
+        // 每篇日记绑定的本地插图（仅前端存储）
+        diaryImages: {},
+        // 宠物记忆：情景记忆（旅行打卡点）+ 语义记忆（个性描述）+ 人格设定 + 习惯总结
+        memories: {
+            episodic: [],
+            semantic: [],
+            semanticProfile: null,  // 单对象，人格设定（identity, preferences, speaking_style, call_user）
+            habit: []              // 习惯总结列表
+        },
+        // 互动统计（用于 memoryScore 计算）
+        interactionLog: [],        // { ts, time_slot } 近7天互动记录
+        nfcScans: []               // { source, ts } NFC 扫描记录（商家/玩偶）
     };
 
-    // --- 2x2 人格矩阵配置 ---
+    // 预设 NFC 来源（无硬件时模拟）
+    const PRESET_NFC_SOURCES = {
+        merchants: ['星巴克', '麦当劳'],
+        dolls: ['labubu', '皮卡丘']
+    };
+
+    // 日记自增 ID（用于图片和记忆绑定）
+    let diarySeq = 0;
+
+    // --- 2x2 人格矩阵配置 (IP Config) ---
     // 比卡丘感：短句、口语、适度语气词（～、…、！）、陪伴感；四种性格保持差异，整体不书面、不冷淡。
     const PERSONALITY_TYPES = {
         '小火苗': {
@@ -674,23 +957,51 @@
             energy: 'extrovert', // 外向
             emotion: 'emotional', // 感性
             desc: '热情、冲动、高饱和暖色',
+            promptDesc: '热情、冲动、高能量。喜欢用感叹号，对一切充满好奇，动作幅度大，喜欢蹦蹦跳跳。',
+            wordiness: 'chatter', // 话多
             colorFilter: 'brightness(1.1) saturate(1.4) hue-rotate(-10deg)', // 暖红/橙色调
             animSpeed: 0.8, // 动作快
             reactionDelay: 0, // 即时反应
             bubbleColor: '#ff9a9e',
-            textColor: '#be185d'
+            textColor: '#be185d',
+            dialogues: [
+                "皮卡～冲冲冲！下一站去哪？🔥",
+                "刚才那只蝴蝶飞好快，我要追上它！",
+                "快带我出去玩嘛！",
+                "和你在一起去哪都开心！✨"
+            ],
+            travelDialogue: "【{location}】太热闹啦，超喜欢！",
+            memorySnippets: [
+                "我总是第一个冲到门口，生怕错过任何一次出发。",
+                "看到地图上多出一个新小点点，我的心情就会亮一大截。",
+                "相机稍微一晃，我就知道那一刻一定很开心。"
+            ]
         },
         '小灯泡': {
             name: '小灯泡',
-            icon: '�',
+            icon: '💡',
             energy: 'extrovert', // 外向
             emotion: 'rational', // 理性
             desc: '好奇、自信、明亮科技感',
+            promptDesc: '理性、好奇、极客范。喜欢分析事物背后的逻辑，关注效率，语气自信但带一点书呆子气。',
+            wordiness: 'chatter', // 话多，但更理性
             colorFilter: 'brightness(1.2) saturate(1.2) hue-rotate(45deg)', // 明亮黄色调
             animSpeed: 0.8, // 动作快
             reactionDelay: 800, // 思考延迟
             bubbleColor: '#fcd34d',
-            textColor: '#b45309'
+            textColor: '#b45309',
+            dialogues: [
+                "今天湿度很适合出门～💡",
+                "那个路标设计我记下了！",
+                "电量满格～",
+                "这条路是最优解吗？"
+            ],
+            travelDialogue: "【{location}】的建筑好有趣～",
+            memorySnippets: [
+                "我总是会记下路牌和转角，哪怕下次不一定会用到。",
+                "每到一个新地方，我都会偷偷给它打分，然后存在脑子里的数据表格里。",
+                "灯光、路线、风向，这些细节会在我的记忆里排成一行行小注释。"
+            ]
         },
         '小云朵': {
             name: '小云朵',
@@ -698,11 +1009,25 @@
             energy: 'introvert', // 内向
             emotion: 'emotional', // 感性
             desc: '温柔、敏感、马卡龙色',
+            promptDesc: '感性、温柔、内向。心思细腻，喜欢观察微小的美好，语气软糯，容易害羞或发呆。',
+            wordiness: 'quiet', // 安静、句子更短
             colorFilter: 'brightness(1.05) saturate(0.8) hue-rotate(200deg)', // 柔和粉/紫色调
             animSpeed: 1.4, // 动作慢
             reactionDelay: 0, // 即时反应
             bubbleColor: '#e9d5ff',
-            textColor: '#7e22ce'
+            textColor: '#7e22ce',
+            dialogues: [
+                "今天的风好温柔啊…☁️",
+                "路边的小花有点孤单呢。",
+                "不想动…在这儿发呆好不好？",
+                "静静陪着你就很好啦。"
+            ],
+            travelDialogue: "有点想念【{location}】的那片云～",
+            memorySnippets: [
+                "有些风吹到脸上的时候，我会悄悄把那一阵风记下来。",
+                "我喜欢把今天看到的云换成小小的心情图案，放进脑海里。",
+                "有时候什么都不说，只是在原地多站一会儿，其实是在保存这一秒。"
+            ]
         },
         '小石头': {
             name: '小石头',
@@ -710,11 +1035,25 @@
             energy: 'introvert', // 内向
             emotion: 'rational', // 理性
             desc: '沉稳、冷幽默、极简冷色',
+            promptDesc: '理性、内向、沉稳。话少，冷幽默，情绪波动小，喜欢用简短的句子，给人安全感。',
+            wordiness: 'balanced', // 话不多不少
             colorFilter: 'grayscale(0.6) brightness(0.9) contrast(1.1)', // 冷灰/蓝色调
             animSpeed: 1.5, // 动作慢
             reactionDelay: 1000, // 较长思考延迟
             bubbleColor: '#e5e7eb',
-            textColor: '#374151'
+            textColor: '#374151',
+            dialogues: [
+                "嗯…这儿挺安静的。🪨",
+                "保持稳定，别大惊小怪～",
+                "在想宇宙的尽头。",
+                "（默默看着你）"
+            ],
+            travelDialogue: "【{location}】…还行吧。",
+            memorySnippets: [
+                "我会把每一次落脚的位置记在心里，哪怕表面上看起来若无其事。",
+                "有些路走过一次，就足够存在记忆里很久。",
+                "我不太爱说，但记住事情这件事，我还挺拿手的。"
+            ]
         }
     };
     
@@ -723,9 +1062,35 @@
         return PERSONALITY_TYPES[appState.petPersonality] || PERSONALITY_TYPES['小火苗'];
     }
 
+    // 获取当前称呼（带兜底）
+    function getOwnerTitle() {
+        if (!appState || !appState.ownerTitle) return '伙伴';
+        return appState.ownerTitle;
+    }
+
+    function sanitizeOwnerTitle(raw) {
+        if (raw === undefined || raw === null) return '伙伴';
+        let text = String(raw).trim();
+        // 不允许出现“主人”二字
+        text = text.replace(/主人/g, '').trim();
+        if (!text) return '伙伴';
+        return text;
+    }
+
+    function updateOwnerTitleDisplay() {
+        const title = getOwnerTitle();
+        if (ownerTitleCurrent) ownerTitleCurrent.textContent = title;
+    }
+
     // --- OpenRouter AIGC 配置（通过 /api/chat 代理，Key 在服务端环境变量中） ---
     const AIGC_API_ENDPOINT = '/api/chat';
     const OPENROUTER_MODEL_ID = 'google/gemini-2.0-flash-001';
+
+    // 记忆抽取提示词（Mem0 风格：领域聚焦 + 严格 JSON，供 /api/memory-summary 或前端 LLM 调用）
+    const MEMORY_EXTRACTION_SYSTEM = `你是一个记忆抽取器，从宠物旅行日记中提取一条可检索的记忆摘要。
+只输出 JSON：{"summary":"...","emotion":"..."}，不要其他文字。
+summary 30～50 字，第一人称，描述宠物在该地的具体表现或感受；emotion 从 excited/tender/curious/nostalgic/calm 中选一。
+只抽取具体行为/感受，可含当地特色；不抽取泛泛的模板句。`;
 
     let isCheckinInProgress = false;
     let ignoreNextPetClick = false;
@@ -745,6 +1110,10 @@
     const pName = document.getElementById('p-name');
     const pTag1 = document.getElementById('p-tag1');
     const pTag2 = document.getElementById('p-tag2');
+    const petInfoPanelToggle = document.getElementById('pet-info-panel-toggle');
+    const petInfoToggleText = document.getElementById('pet-info-toggle-text');
+    const petTopBarInner = document.querySelector('#view-petroom .petroom-top-bar-inner');
+    const petInfoDragArea = document.getElementById('pet-info-drag-area');
     
     const petAvatarRoom = document.getElementById('pet-avatar-room');
     const petAvatarSprite = document.getElementById('pet-avatar-sprite');
@@ -767,6 +1136,13 @@
     const petRoomBadge = document.getElementById('pet-room-badge');
     const scenePreview = document.getElementById('scene-preview');
 
+    // 称呼与记忆 / 日记插图相关 DOM
+    const ownerTitleConfig = document.getElementById('owner-title-config');
+    const ownerTitleCurrent = document.getElementById('owner-title-current');
+    const ownerTitleInput = document.getElementById('owner-title-input');
+    const btnMemory = document.getElementById('btn-memory');
+    const diaryImageInput = document.getElementById('diary-image-input');
+
     const modalOverlay = document.getElementById('modal-overlay');
     const modalPanel = document.getElementById('modal-panel');
     const modalTitle = document.getElementById('modal-title');
@@ -783,6 +1159,8 @@
 
     const roomViewport = document.getElementById('room-viewport');
     const roomScene = document.getElementById('room-scene');
+    const petDialogBar = document.getElementById('pet-dialog-bar');
+    const petDialogText = document.getElementById('pet-dialog-text');
 
     const defaultPetPosition = {
         bottom: '20%',
@@ -903,6 +1281,29 @@
     }
 
     window.addEventListener('resize', updateRoomHotspotPositions);
+
+    // 统一的宠物对话展示：在宠物页底部对话栏中显示当前消息
+    function showPetMessage(message, options = {}) {
+        if (!petDialogBar || !petDialogText) return;
+
+        petDialogText.textContent = message;
+
+        // 根据当前人格配置调整对话栏边框颜色
+        const cfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+        if (cfg && cfg.bubbleColor) {
+            petDialogBar.querySelector('div').style.borderColor = cfg.bubbleColor;
+        }
+
+        petDialogBar.classList.add('visible');
+
+        const duration = options.duration != null ? options.duration : 3000;
+        if (duration > 0) {
+            window.clearTimeout(petDialogBar.__hideTimer);
+            petDialogBar.__hideTimer = window.setTimeout(() => {
+                petDialogBar.classList.remove('visible');
+            }, duration);
+        }
+    }
 
     // 根据当前人格与目标热点，构造一条从当前位置到目标的行走路径
     function buildPathToHotspot(hotspotKey, personalityCfg) {
@@ -1144,7 +1545,7 @@
         },
         door: {
             position: { bottom: '30%', left: '70%' },
-            context: '跑到门口，准备和主人一起出门探索',
+            context: '跑到门口，准备和陪我旅行的人一起出门探索',
             stayMs: 800,
             animationState: 'door',
             resultingState: PET_STATES.INTERACT
@@ -1177,7 +1578,7 @@
             }
         }
 
-        // 从“观察主人”状态发呆太久时，更偏向轻度闲逛或直接休息
+        // 从“观察对方”状态发呆太久时，更偏向轻度闲逛或直接休息
         if (trigger === 'inactivity_from_idle_observe') {
             if (energy === 'extrovert' && emotion === 'emotional') {
                 return {
@@ -1421,30 +1822,48 @@
         } else {
             scheduleInactivityFlow();
         }
+        // 记录互动用于 memoryScore
+        const ts = Date.now();
+        const hour = new Date().getHours();
+        let slot = 'afternoon';
+        if (hour >= 5 && hour < 12) slot = 'morning';
+        else if (hour >= 18 && hour < 23) slot = 'evening';
+        else if (hour >= 23 || hour < 5) slot = 'night';
+        appState.interactionLog = appState.interactionLog || [];
+        appState.interactionLog.push({ ts, time_slot: slot });
+        const weekAgo = ts - 7 * 24 * 60 * 60 * 1000;
+        appState.interactionLog = appState.interactionLog.filter((e) => e.ts >= weekAgo);
     }
 
-    // --- 场景素材：中国地点固定映射 + 非中国地点隐藏款随机 ---
-    // 中国地点（key 按具体优先，先匹配广州再匹配广东）
+    // --- 场景素材：中国地点固定映射 + 非中国地点隐藏款 + NFC 预设 ---
+    // 中国地点（key 按具体优先，先匹配广州再匹配广东），每项带 tier、source
     const sceneAssets = {
-        '北京':   { image: '场景/北京-糖葫芦.png',   label: '北京·糖葫芦' },
-        '广州':   { image: '场景/广州-早茶.png',    label: '广州·早茶' },
-        '广东':   { image: '场景/广州-早茶.png',    label: '广州·早茶' },
-        '上海':   { image: '场景/上海—大白兔.png', label: '上海·大白兔' },
-        '深圳':   { image: '场景/深圳—簕杜鹃.png',  label: '深圳·簕杜鹃' },
-        '成都':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫' },
-        '四川':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫' },
-        '杭州':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒' },
-        '浙江':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒' }
+        '北京':   { image: '场景/北京-糖葫芦.png',   label: '北京·糖葫芦', tier: 'B', source: 'checkin' },
+        '广州':   { image: '场景/广州-早茶.png',    label: '广州·早茶', tier: 'B', source: 'checkin' },
+        '广东':   { image: '场景/广州-早茶.png',    label: '广州·早茶', tier: 'B', source: 'checkin' },
+        '上海':   { image: '场景/上海—大白兔.png', label: '上海·大白兔', tier: 'B', source: 'checkin' },
+        '深圳':   { image: '场景/深圳—簕杜鹃.png',  label: '深圳·簕杜鹃', tier: 'B', source: 'checkin' },
+        '成都':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫', tier: 'B', source: 'checkin' },
+        '四川':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫', tier: 'B', source: 'checkin' },
+        '杭州':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒', tier: 'B', source: 'checkin' },
+        '浙江':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒', tier: 'B', source: 'checkin' }
     };
     const sceneAssetsKeyOrder = ['北京', '广州', '广东', '上海', '深圳', '成都', '四川', '杭州', '浙江'];
 
     const hiddenSceneAssets = [
-        { image: '场景/埃及金字塔.png',   label: '隐藏款 · 埃及金字塔' },
-        { image: '场景/埃菲尔铁塔.png',   label: '隐藏款 · 埃菲尔铁塔' },
-        { image: '场景/自由女神像.png',   label: '隐藏款 · 自由女神像' }
+        { image: '场景/埃及金字塔.png',   label: '隐藏款 · 埃及金字塔', tier: 'A', source: 'checkin' },
+        { image: '场景/埃菲尔铁塔.png',   label: '隐藏款 · 埃菲尔铁塔', tier: 'A', source: 'checkin' },
+        { image: '场景/自由女神像.png',   label: '隐藏款 · 自由女神像', tier: 'A', source: 'checkin' }
     ];
 
-    // 国内场景池（去重）：用于普通随机掉落，打卡地点与掉落物解耦
+    const nfcPresetAssets = [
+        { image: '场景/星巴克.svg', label: '星巴克', tier: 'A', source: 'nfc' },
+        { image: '场景/麦当劳.svg', label: '麦当劳', tier: 'A', source: 'nfc' },
+        { image: '场景/labubu.svg', label: 'labubu', tier: 'S', source: 'nfc' },
+        { image: '场景/皮卡丘.svg', label: '皮卡丘', tier: 'S', source: 'nfc' }
+    ];
+
+    // 国内场景池（去重）
     const domesticScenePool = (() => {
         const seen = new Set();
         return Object.values(sceneAssets).filter(s => {
@@ -1454,15 +1873,102 @@
         });
     })();
 
-    /** 根据当前打卡次数计算本次掉落的 scene：每 3 次为国外隐藏款，否则从国内池随机 */
-    function getDroppedScene(checkInCount) {
-        if (checkInCount % 3 === 0 && hiddenSceneAssets.length > 0) {
-            return hiddenSceneAssets[Math.floor(Math.random() * hiddenSceneAssets.length)];
+    /** 计算 memoryScore（0～6）：记忆维度丰富度 */
+    function computeMemoryScore() {
+        let score = 0;
+        const episodic = appState.memories && appState.memories.episodic ? appState.memories.episodic : [];
+        const locations = appState.locations || [];
+        const interactionLog = appState.interactionLog || [];
+        const nfcScans = appState.nfcScans || [];
+
+        if (episodic.some((m) => m.nfc_source && PRESET_NFC_SOURCES.merchants.includes(m.nfc_source)) || nfcScans.some((s) => PRESET_NFC_SOURCES.merchants.includes(s.source))) score++;
+        if (episodic.some((m) => m.nfc_source && PRESET_NFC_SOURCES.dolls.includes(m.nfc_source)) || nfcScans.some((s) => PRESET_NFC_SOURCES.dolls.includes(s.source))) score++;
+
+        const uniqueLocations = [...new Set(locations.map((l) => (l || '').trim()).filter(Boolean))];
+        if (uniqueLocations.length >= 3) score++;
+
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const recentInteractions = interactionLog.filter((e) => e.ts >= weekAgo);
+        if (recentInteractions.length >= 10) score++;
+
+        const timeSlots = new Set(episodic.map((m) => m.time_slot).filter(Boolean));
+        interactionLog.forEach((e) => { if (e.time_slot) timeSlots.add(e.time_slot); });
+        if (timeSlots.size >= 2) score++;
+
+        const hasWeek = episodic.some((m) => m.time_window === 'week' || m.time_window === 'month' || m.time_window === 'year');
+        const oldDates = episodic.filter((m) => m.date).map((m) => new Date(m.date).getTime());
+        const now = Date.now();
+        const hasOld = oldDates.some((d) => now - d > 24 * 60 * 60 * 1000);
+        if (hasWeek || (episodic.length >= 2 && hasOld)) score++;
+
+        return Math.min(6, score);
+    }
+
+    /** 按 memoryScore 调整 S/A/B/C 掉落概率 */
+    function getAdjustedTierProbabilities(memoryScore) {
+        const s = Math.min(30, 15 + memoryScore * 2.5) / 100;
+        const a = Math.min(25, 20 + memoryScore * 0.8) / 100;
+        const b = 0.2;
+        const c = 1 - s - a - b;
+        return { S: s, A: a, B: b, C: Math.max(0, c) };
+    }
+
+    /** 按概率随机确定掉落级别 */
+    function rollTier(probs) {
+        const r = Math.random();
+        if (r < probs.S) return 'S';
+        if (r < probs.S + probs.A) return 'A';
+        if (r < probs.S + probs.A + probs.B) return 'B';
+        return 'C';
+    }
+
+    /** 地点专属收集物池：北京 10 个示例，其他地点用通用池 */
+    const LOCATION_COLLECTIBLE_POOLS = {
+        '北京': {
+            S: [nfcPresetAssets[2], nfcPresetAssets[3]],
+            A: [nfcPresetAssets[0], nfcPresetAssets[1], hiddenSceneAssets[0]],
+            B: [sceneAssets['北京'], sceneAssets['广州'], sceneAssets['上海']],
+            C: [sceneAssets['深圳'], sceneAssets['成都'], sceneAssets['杭州']]
         }
-        if (domesticScenePool.length > 0) {
-            return domesticScenePool[Math.floor(Math.random() * domesticScenePool.length)];
+    };
+    const defaultPool = {
+        S: nfcPresetAssets.filter((a) => a.tier === 'S'),
+        A: [...nfcPresetAssets.filter((a) => a.tier === 'A'), ...hiddenSceneAssets],
+        B: domesticScenePool,
+        C: domesticScenePool
+    };
+
+    /** 根据 memoryScore 与地点从专属池抽取未获得的收集物 */
+    function getDroppedScene(checkInCount, location) {
+        const score = computeMemoryScore();
+        const probs = getAdjustedTierProbabilities(score);
+        let tier = rollTier(probs);
+        const normalized = typeof normalizeLocationName === 'function' ? normalizeLocationName(location || '') : String(location || '').trim();
+        const pool = LOCATION_COLLECTIBLE_POOLS[normalized] || defaultPool;
+        const obtainedLabels = new Set((appState.cabinetItems || []).map((i) => (i.scene && i.scene.label) || i.location || '').filter(Boolean));
+        let tierPool = pool[tier] || [];
+        if (!Array.isArray(tierPool)) tierPool = [];
+        let available = tierPool.filter((s) => s && s.label && !obtainedLabels.has(s.label));
+        if (available.length === 0) {
+            const fallbackOrder = ['S', 'A', 'B', 'C'];
+            const idx = fallbackOrder.indexOf(tier);
+            for (let i = idx + 1; i < fallbackOrder.length; i++) {
+                const t = fallbackOrder[i];
+                const p = pool[t] || [];
+                available = (Array.isArray(p) ? p : []).filter((s) => s && s.label && !obtainedLabels.has(s.label));
+                if (available.length > 0) { tier = t; break; }
+            }
         }
-        return null;
+        if (available.length === 0) {
+            const allItems = [...(pool.S || []), ...(pool.A || []), ...(pool.B || []), ...(pool.C || [])];
+            available = allItems.filter((s) => s && s.label);
+        }
+        if (available.length === 0) {
+            if (domesticScenePool.length > 0) return domesticScenePool[Math.floor(Math.random() * domesticScenePool.length)];
+            if (hiddenSceneAssets.length > 0) return hiddenSceneAssets[Math.floor(Math.random() * hiddenSceneAssets.length)];
+            return null;
+        }
+        return available[Math.floor(Math.random() * available.length)];
     }
 
     function getSceneAsset(location) {
@@ -1512,6 +2018,54 @@
 
     // 初始化默认人格
     updatePersonalityDisplay();
+
+    // 顶部信息区：称呼设置可收起 / 展开
+    let isOwnerTitleCollapsed = true;
+
+    function applyOwnerTitleCollapsed(collapsed) {
+        if (!ownerTitleConfig) return;
+        isOwnerTitleCollapsed = collapsed;
+        ownerTitleConfig.style.display = collapsed ? 'none' : 'flex';
+        if (petInfoToggleText) {
+            petInfoToggleText.textContent = collapsed ? '展开称呼设置' : '收起称呼设置';
+        }
+    }
+
+    if (petInfoPanelToggle) {
+        petInfoPanelToggle.addEventListener('click', () => {
+            applyOwnerTitleCollapsed(!isOwnerTitleCollapsed);
+        });
+    }
+
+    // 顶部信息区上拉操作区：仅控制称呼区展开 / 收起
+    if (petInfoDragArea) {
+        let dragStartY = null;
+        petInfoDragArea.addEventListener('click', () => {
+            applyOwnerTitleCollapsed(!isOwnerTitleCollapsed);
+        });
+        petInfoDragArea.addEventListener('touchstart', (event) => {
+            const t = event.touches ? event.touches[0] : event;
+            dragStartY = t.clientY;
+        });
+        petInfoDragArea.addEventListener('touchend', (event) => {
+            if (dragStartY === null) return;
+            const t = event.changedTouches ? event.changedTouches[0] : event;
+            const deltaY = t.clientY - dragStartY;
+            dragStartY = null;
+            const threshold = 20;
+            if (Math.abs(deltaY) < threshold) return;
+            if (deltaY < 0) {
+                // 上拉：缩小到最小，只保留“展开称呼设置”
+                applyOwnerTitleCollapsed(true);
+            } else {
+                // 下拉：展开称呼设置
+                applyOwnerTitleCollapsed(false);
+            }
+        });
+    }
+
+    // 默认收起称呼设置，更多空间留给场景
+    applyOwnerTitleCollapsed(true);
 
     // 盲盒生成器点击事件
     if (btnBlindBox) {
@@ -1682,6 +2236,7 @@
     }
 
     // --- 弹层：通用放大查看 ---
+    let lastCabinetBodyHTML = '';
     function openModal(title, contentHTML, variant = 'default') {
         if (!modalOverlay || !modalTitle || !modalBody || !modalPanel) return;
         modalTitle.textContent = title;
@@ -1704,37 +2259,70 @@
         if (modalBody) modalBody.innerHTML = '';
     }
 
+    const TIER_ORDER = { S: 0, A: 1, B: 2, C: 3 };
+    const CABINET_TIER_SLOTS = { S: 2, A: 3, B: 3, C: 4 };
+    function sortCabinetByTier(items) {
+        return items.map((item, idx) => ({ item, origIdx: idx })).sort((a, b) => {
+            const tA = TIER_ORDER[(a.item && a.item.tier) || 'C'] ?? 4;
+            const tB = TIER_ORDER[(b.item && b.item.tier) || 'C'] ?? 4;
+            return tA - tB;
+        });
+    }
+
+    /** 按 tier 分组 cabinetItems，保留 origIdx */
+    function groupCabinetByTier(items) {
+        const byTier = { S: [], A: [], B: [], C: [] };
+        (items || []).forEach((item, idx) => {
+            const t = (item.tier || 'C').toUpperCase();
+            if (byTier[t]) byTier[t].push({ item, origIdx: idx });
+        });
+        return byTier;
+    }
+
     function openCabinetModal() {
-        // 直接根据 appState.cabinetItems 生成内容，不再依赖 hidden DOM
-        const totalSlots = 12; // 3 rows * 4 cols
         const items = appState.cabinetItems || [];
         const count = items.length;
-        
-        let gridHTML = '';
-        for (let i = 0; i < totalSlots; i++) {
-            const item = items[i];
-            if (item) {
-                // 已解锁
-                const label = item.scene ? item.scene.label : item.location;
-                // 优先使用场景图，没有则用默认图
-                const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg'; 
-                
-                gridHTML += `
-                    <div class="cabinet-slot bg-white/50 backdrop-blur-sm">
-                        <img src="${imgSrc}" alt="${label}" class="drop-shadow-sm">
-                        <span class="truncate w-full">${label}</span>
-                    </div>
-                `;
-            } else {
-                // 未解锁
-                gridHTML += `
-                    <div class="cabinet-slot cabinet-slot--empty">
-                        <i class="ph-bold ph-server text-3xl mb-1 opacity-40"></i>
-                        <span class="scale-90">去旅行解锁</span>
-                    </div>
-                `;
+        const byTier = groupCabinetByTier(items);
+        const tierLabels = { S: 'S 级', A: 'A 级', B: 'B 级', C: 'C 级' };
+        const tierCols = { S: 2, A: 3, B: 3, C: 4 };
+
+        let sectionsHTML = '';
+        ['S', 'A', 'B', 'C'].forEach((tier) => {
+            const slots = CABINET_TIER_SLOTS[tier] || 4;
+            const group = byTier[tier] || [];
+            const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
+            const cols = tierCols[tier] || 4;
+            let slotsHTML = '';
+            for (let i = 0; i < slots; i++) {
+                const { item, origIdx } = group[i] || {};
+                if (item && (item.scene || item.location)) {
+                    const { short: shortLabel, full: fullLabel } = getShortLabel(item);
+                    const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+                    slotsHTML += `
+                        <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
+                            <span class="absolute top-0.5 right-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${tierClass}">${tier}</span>
+                            <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm"></div>
+                            <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span>
+                        </div>
+                    `;
+                } else {
+                    slotsHTML += `
+                        <div class="cabinet-slot cabinet-slot--empty">
+                            <div class="cabinet-slot__media"><i class="ph-bold ph-server text-3xl cabinet-empty-icon opacity-40"></i></div>
+                            <span class="scale-90">去旅行解锁</span>
+                        </div>
+                    `;
+                }
             }
-        }
+            sectionsHTML += `
+                <div class="mb-3">
+                    <div class="text-[11px] font-bold text-[#5c4a3a] mb-1.5 flex items-center gap-1.5">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] ${tierClass}">${tierLabels[tier]}</span>
+                    </div>
+                    <div class="grid gap-2" style="grid-template-columns: repeat(${cols}, 1fr);">${slotsHTML}</div>
+                </div>
+            `;
+        });
 
         const emptyHint = count === 0 ? 
             '<div class="text-center text-xs text-[#8d7f73] font-bold mt-4 mb-2">带我去打卡，解锁第一件纪念品吧~</div>' : 
@@ -1750,9 +2338,9 @@
                 
                 ${emptyHint}
                 
-                <!-- 物品网格 -->
-                <div class="grid grid-cols-4 gap-3 overflow-y-auto no-scrollbar pb-4">
-                    ${gridHTML}
+                <!-- 按 S-A-B-C 分级展示 -->
+                <div class="overflow-y-auto no-scrollbar pb-4 flex-1 min-h-0">
+                    ${sectionsHTML}
                 </div>
                 
                 <!-- 底部提示 -->
@@ -1762,8 +2350,54 @@
             </div>
         `;
         
-        // 这里的 variant='cabinet' 已经在 openModal 里处理了 modalPanel 的 class
+        lastCabinetBodyHTML = bodyHTML;
         openModal('旅行橱柜', bodyHTML, 'cabinet');
+        
+        // 点击已收集格子 → 详情层（大图 + 完整名称）
+        modalBody.addEventListener('click', function onCabinetBodyClick(e) {
+            const slot = e.target.closest('.cabinet-slot:not(.cabinet-slot--empty)');
+            if (!slot) return;
+            const idx = slot.getAttribute('data-item-index');
+            if (idx == null) return;
+            const item = appState.cabinetItems[parseInt(idx, 10)];
+            if (item) openCabinetItemDetail(item);
+        }, { once: true });
+    }
+
+    function openCabinetItemDetail(item, fromCabinetModal = true) {
+        const { full: fullLabel } = getShortLabel(item);
+        const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+        const tier = item.tier || 'C';
+        const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
+        const detailHTML = `
+            <div class="flex flex-col items-center gap-4 p-4">
+                <span class="self-end text-xs font-bold px-2 py-1 rounded ${tierClass}">${tier} 级</span>
+                <img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="max-w-full max-h-[50vh] object-contain rounded-xl shadow">
+                <p class="text-base font-bold text-[#5c4a3a] text-center">${escapeHtml(fullLabel)}</p>
+                <button type="button" class="text-sm text-[#8d7f73] underline hover:opacity-80">返回橱柜</button>
+            </div>
+        `;
+        if (!modalOverlay.classList.contains('hidden')) {
+            modalBody.innerHTML = detailHTML;
+        } else {
+            openModal('纪念品', detailHTML, 'cabinet');
+        }
+        const btn = modalBody.querySelector('button');
+        if (btn) btn.addEventListener('click', () => {
+            if (fromCabinetModal && lastCabinetBodyHTML) {
+                modalBody.innerHTML = lastCabinetBodyHTML;
+                modalBody.addEventListener('click', function onCabinetBodyClick(e) {
+                    const slot = e.target.closest('.cabinet-slot:not(.cabinet-slot--empty)');
+                    if (!slot) return;
+                    const idx = slot.getAttribute('data-item-index');
+                    if (idx == null) return;
+                    const it = appState.cabinetItems[parseInt(idx, 10)];
+                    if (it) openCabinetItemDetail(it, true);
+                }, { once: true });
+            } else {
+                closeModal();
+            }
+        });
     }
 
     function openDiaryModal() {
@@ -1876,13 +2510,23 @@
     if (actionCabinet) {
         actionCabinet.addEventListener('click', () => openCabinetModal());
     }
+    if (cabinetGrid) {
+        cabinetGrid.addEventListener('click', (e) => {
+            const slot = e.target.closest('.cabinet-slot[data-item-index]');
+            if (!slot) return;
+            const idx = slot.getAttribute('data-item-index');
+            if (idx == null) return;
+            const item = appState.cabinetItems[parseInt(idx, 10)];
+            if (item) openCabinetItemDetail(item, false);
+        });
+    }
     if (actionDiary) {
         actionDiary.addEventListener('click', () => openDiaryModal());
     }
     if (actionRest) {
         actionRest.addEventListener('click', () => {
             if (petLife.current === PET_STATES.REST) {
-                triggerAIPetAction('被主人叫醒，迷迷糊糊地睁开了眼睛');
+                triggerAIPetAction('被叫醒的时候，眼皮还有点沉沉的。');
                 setPetState(PET_STATES.IDLE_WAIT);
             } else {
                 triggerAIPetAction('决定先小睡一会儿，恢复体力');
@@ -2004,34 +2648,102 @@
         setPetState(PET_STATES.INTERACT);
     });
 
-    // --- 比卡丘宠物按钮交互 ---
-    if (btnPetTouch) {
-        btnPetTouch.addEventListener('click', () => {
-            markPetInteraction();
-            triggerAIPetAction('主人轻轻摸了摸我的头');
-            setPetState(PET_STATES.INTERACT);
-        });
+    const energyFingerprint = document.getElementById('energy-fingerprint-area');
+    const energyParticlesContainer = document.getElementById('energy-particles');
+    let energyPressTimer = null;
+    let energyChargeInterval = null;
+
+    // --- 能量传递交互 ---
+    if (energyFingerprint) {
+        // 开始按压
+        const startCharge = (e) => {
+            e.preventDefault();
+            energyFingerprint.classList.add('active');
+            energyFingerprint.classList.add('energy-charging'); // 播放呼吸光晕动画
+            
+            // 播放心跳背景
+            document.body.classList.add('heartbeat-bg-active');
+
+            // 触发一次简短反馈
+            triggerAIPetAction('感受到了熟悉的能量在慢慢流过来… ❤️');
+            playPetAnimation('idle_observe', { loop: true }); // 变为观察/专注状态
+
+            // 持续生成粒子
+            energyChargeInterval = setInterval(() => {
+                createEnergyParticle();
+                // 模拟手机震动反馈 (如果支持)
+                if (navigator.vibrate) navigator.vibrate(15);
+            }, 100);
+
+            // 长按判定：超过 2 秒视为一次完整充能
+            energyPressTimer = setTimeout(() => {
+                triggerAIPetAction('能量充满啦！好温暖！✨');
+                playExcitedAnimation();
+                if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+            }, 2000);
+        };
+
+        // 结束按压
+        const stopCharge = () => {
+            energyFingerprint.classList.remove('active');
+            energyFingerprint.classList.remove('energy-charging');
+            document.body.classList.remove('heartbeat-bg-active');
+            
+            clearInterval(energyChargeInterval);
+            clearTimeout(energyPressTimer);
+            energyChargeInterval = null;
+            energyPressTimer = null;
+
+            // 恢复默认状态
+            setTimeout(() => {
+                if (petLife.current !== PET_STATES.REST) {
+                    setPetState(PET_STATES.IDLE_BREATH);
+                }
+            }, 1000);
+        };
+
+        energyFingerprint.addEventListener('mousedown', startCharge);
+        energyFingerprint.addEventListener('touchstart', startCharge, { passive: false });
+        
+        energyFingerprint.addEventListener('mouseup', stopCharge);
+        energyFingerprint.addEventListener('mouseleave', stopCharge);
+        energyFingerprint.addEventListener('touchend', stopCharge);
+        energyFingerprint.addEventListener('touchcancel', stopCharge);
     }
 
-    if (btnPetGreet) {
-        btnPetGreet.addEventListener('click', () => {
-            markPetInteraction();
-            triggerAIPetAction('主人对我挥手打了个招呼');
-            setPetState(PET_STATES.IDLE_OBSERVE);
-        });
-    }
-
-    if (btnPetRestToggle) {
-        btnPetRestToggle.addEventListener('click', () => {
-            if (petLife.current === PET_STATES.REST) {
-                // 从休息中被叫醒
-                triggerAIPetAction('被主人叫醒，迷迷糊糊地睁开了眼睛');
-                setPetState(PET_STATES.IDLE_WAIT);
-            } else {
-                triggerAIPetAction('决定先小睡一会儿，恢复体力');
-                setPetState(PET_STATES.REST);
-            }
-        });
+    function createEnergyParticle() {
+        if (!energyParticlesContainer || !petAvatarRoom) return;
+        
+        const rect = energyFingerprint.getBoundingClientRect();
+        const startX = rect.left + rect.width / 2;
+        const startY = rect.top + rect.height / 2;
+        
+        const petRect = petAvatarRoom.getBoundingClientRect();
+        const endX = petRect.left + petRect.width / 2;
+        const endY = petRect.top + petRect.height / 2;
+        
+        const particle = document.createElement('div');
+        particle.className = 'energy-particle';
+        
+        // 随机偏移起始点
+        const offsetX = (Math.random() - 0.5) * 40;
+        const offsetY = (Math.random() - 0.5) * 40;
+        
+        particle.style.left = `${startX + offsetX}px`;
+        particle.style.top = `${startY + offsetY}px`;
+        
+        // 计算 CSS 变量用于动画终点
+        const tx = endX - (startX + offsetX);
+        const ty = endY - (startY + offsetY);
+        particle.style.setProperty('--tx', `${tx}px`);
+        particle.style.setProperty('--ty', `${ty}px`);
+        
+        energyParticlesContainer.appendChild(particle);
+        
+        // 动画结束后移除
+        setTimeout(() => {
+            particle.remove();
+        }, 1000);
     }
 
     // --- 核心：打卡联动 ---
@@ -2043,66 +2755,152 @@
 
         isCheckinInProgress = true;
 
-        appState.locations.push(location);
-        
-        // 1. 在地图上随机位置生成打卡图钉
-        addMapPin(location);
-
         const originalText = btnCheckin.innerText;
         btnCheckin.disabled = true;
         btnCheckin.innerText = '写日记中…';
-        
-        let diaryText = '';
-        let usedFallback = false;
 
-        console.log('[Diary AIGC] 正在通过 /api/chat 请求生成日记…');
-        const result = await generateDiaryWithAIGC(location, appState.petPersonality);
-        if (result && result.ok && result.content) {
-            diaryText = result.content;
-        } else {
-            usedFallback = true;
-            console.warn('[Diary AIGC] 使用本地模板日记作为兜底。原因:', result && result.error ? result.error : '返回内容为空');
-        }
+        try {
+            appState.locations.push(location);
+            
+            // 1. 在地图上随机位置生成打卡图钉
+            addMapPin(location);
 
-        if (!diaryText) {
-            diaryText = buildDiaryText(location, appState.petPersonality);
-        }
+            let diaryText = '';
+            let usedFallback = false;
 
-        const n = appState.locations.length;
-        const droppedScene = getDroppedScene(n);
-        const scene = droppedScene || getSceneAsset(location);
+            console.log('[Diary AIGC] 正在通过 /api/chat 请求生成日记…');
+            const result = await generateDiaryWithAIGC(location, appState.petPersonality);
+            if (result && result.ok && result.content) {
+                diaryText = result.content;
+            } else {
+                usedFallback = true;
+                console.warn('[Diary AIGC] 使用本地模板日记作为兜底。原因:', result && result.error ? result.error : '返回内容为空');
+            }
 
-        // 2. 生成日记（使用本次实际掉落的 scene）
-        generateDiaryEntry(location, diaryText, scene);
+            if (!diaryText) {
+                diaryText = buildDiaryText(location, appState.petPersonality);
+            }
 
-        // 3. 改变宠物房间状态与橱柜
-        triggerAIPetAction(`刚才去了${location}`);
-        setPetState(PET_STATES.INTERACT);
-        petRoomBadge.classList.remove('hidden'); // 提示宠物房间有新动态
-        diaryBadge.classList.remove('hidden');   // 提示宠物页有新日记
-        if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
-        const cabinetNotFull = (!appState.cabinetItems || appState.cabinetItems.length < CABINET_SLOTS);
-        if (cabinetNotFull && droppedScene && actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
-        if (cabinetNotFull && droppedScene) {
-            addCabinetItem(location, droppedScene);
-            showScenePreview(location, droppedScene);
-        }
-        playExcitedAnimation();                 // 宠物播放一次兴奋动画
+            const n = appState.locations.length;
+            const droppedScene = getDroppedScene(n, location);
+            const scene = droppedScene || getSceneAsset(location);
 
-        if (usedFallback) {
-            console.warn('[Diary AIGC] 使用本地模板日记作为兜底。');
-        }
-        
-        // 按钮视觉反馈
-        locationInput.value = '';
-        btnCheckin.innerText = '打卡成功!';
-        btnCheckin.classList.replace('bg-[#ff8fab]', 'bg-[#9bdeac]');
-        setTimeout(() => {
-            btnCheckin.innerText = originalText || '去打卡';
-            btnCheckin.classList.replace('bg-[#9bdeac]', 'bg-[#ff8fab]');
+            // 本次参考的旅行记忆条数与来源（用于成功提示与日记卡片展示）
+            let memoryCountForHint = (result && result.ok && typeof result.memoryCount === 'number') ? result.memoryCount : 0;
+            let memorySources = [];
+            if (typeof recallRelevantMemories === 'function') {
+                const relevant = recallRelevantMemories({ location, limit: 2, includeDaily: false });
+                memorySources = relevant.map((m) => getMemorySourceLabel(m)).filter(Boolean);
+                if (memoryCountForHint === 0) memoryCountForHint = relevant.length;
+            }
+            if (memoryCountForHint === 0 && memorySources.length === 0) {
+                const travelMemories = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
+                const relevant = location ? travelMemories.filter((m) => (m.location_city || m.location || '').indexOf(location) >= 0 || (location || '').indexOf(m.location_city || m.location || '') >= 0) : travelMemories;
+                memoryCountForHint = relevant.slice(0, 2).length;
+                memorySources = relevant.slice(0, 2).map((m) => getMemorySourceLabel(m)).filter(Boolean);
+            }
+
+            // 2. 生成日记（使用本次实际掉落的 scene，传入记忆来源用于可展开备注）
+            const diaryMeta = generateDiaryEntry(location, diaryText, scene, memoryCountForHint, memorySources);
+
+            // 2.5 生成一条情景记忆：优先调用 /api/memory-summary 抽取 summary/emotion/key_facts，失败则回退模板
+            if (diaryMeta && diaryMeta.diaryId) {
+                let summaryFromLLM = null;
+                let emotionFromLLM = null;
+                let keyFactsFromLLM = null;
+                try {
+                    const timeSlot = typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '';
+                    const travelMemoriesForDiff = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
+                    const recentForCity = travelMemoriesForDiff.find((m) => {
+                        const cityLabel = m.location_city || m.location || '';
+                        return location && (cityLabel.indexOf(location) >= 0 || location.indexOf(cityLabel) >= 0);
+                    }) || travelMemoriesForDiff[0];
+                    const lastSummary = recentForCity
+                        ? (recentForCity.summary || recentForCity.narration || recentForCity.text || '')
+                        : '';
+
+                    const checkinFreq = (appState.locations || []).filter((l) => (l || '').indexOf(location) >= 0 || (location || '').indexOf(l || '') >= 0).length;
+                    const interactionFreq = (appState.interactionLog || []).length;
+                    const body = {
+                        diaryText,
+                        location,
+                        date: diaryMeta.date,
+                        time_slot: timeSlot,
+                        personality: appState.petPersonality || '小火苗',
+                        checkin_frequency: checkinFreq,
+                        interaction_frequency: interactionFreq
+                    };
+                    if (lastSummary) body.last_summary = lastSummary;
+
+                    const resp = await fetch('/api/memory-summary', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        if (data && data.summary && data.emotion) {
+                            summaryFromLLM = data.summary;
+                            emotionFromLLM = data.emotion;
+                            if (Array.isArray(data.key_facts)) keyFactsFromLLM = data.key_facts;
+                        } else {
+                            console.warn('[Memory Summary] 响应缺少 summary/emotion 字段，使用模板回退。', data);
+                        }
+                    } else {
+                        console.warn('[Memory Summary] 接口返回非 2xx，状态：', resp.status);
+                    }
+                } catch (err) {
+                    console.warn('[Memory Summary] 调用 /api/memory-summary 失败，使用模板回退。', err);
+                }
+
+                appendEpisodicMemory({
+                    date: diaryMeta.date,
+                    location,
+                    scene,
+                    diaryId: String(diaryMeta.diaryId),
+                    summary: summaryFromLLM || undefined,
+                    emotion: emotionFromLLM || undefined,
+                    key_facts: keyFactsFromLLM || undefined
+                });
+            }
+
+            // 3. 改变宠物房间状态与橱柜
+            triggerAIPetAction(`刚才去了${location}`);
+            setPetState(PET_STATES.INTERACT);
+            if (petRoomBadge) petRoomBadge.classList.remove('hidden'); // 提示宠物房间有新动态
+            if (diaryBadge) diaryBadge.classList.remove('hidden');   // 提示宠物页有新日记
+            if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
+            const cabinetNotFull = (!appState.cabinetItems || appState.cabinetItems.length < CABINET_SLOTS);
+            if (cabinetNotFull && droppedScene && actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
+            if (cabinetNotFull && droppedScene) {
+                addCabinetItem(location, droppedScene);
+                showScenePreview(location, droppedScene);
+            }
+            playExcitedAnimation();                 // 宠物播放一次兴奋动画
+
+            if (usedFallback) {
+                console.warn('[Diary AIGC] 使用本地模板日记作为兜底。');
+            }
+
+            // 按钮视觉反馈
+            locationInput.value = '';
+            btnCheckin.innerText = memoryCountForHint > 0 ? `打卡成功！已参考 ${memoryCountForHint} 条旅行记忆` : '打卡成功!';
+            if (btnCheckin.classList.contains('bg-[#ff8fab]')) {
+                btnCheckin.classList.replace('bg-[#ff8fab]', 'bg-[#9bdeac]');
+            }
+            setTimeout(() => {
+                btnCheckin.innerText = originalText || '去打卡';
+                if (btnCheckin.classList.contains('bg-[#9bdeac]')) {
+                    btnCheckin.classList.replace('bg-[#9bdeac]', 'bg-[#ff8fab]');
+                }
+            }, 1500);
+        } catch (e) {
+            console.error('[Diary AIGC] 生成日记流程出现异常:', e);
+        } finally {
             btnCheckin.disabled = false;
             isCheckinInProgress = false;
-        }, 1500);
+        }
     });
 
     // --- 地点标准化与中国地图坐标映射 ---
@@ -2329,6 +3127,59 @@
         });
     }
 
+    // --- 日记插图：事件委托与文件读取 ---
+    let currentDiaryForImage = null;
+
+    function setupDiaryImageHandlers() {
+        if (!diaryImageInput) return;
+
+        document.addEventListener('click', (event) => {
+            const hintSummary = event.target.closest('.memory-hint-summary');
+            if (hintSummary) {
+                const block = hintSummary.closest('.memory-hint-block');
+                const detail = block && block.querySelector('.memory-sources-detail');
+                if (detail) detail.classList.toggle('hidden');
+                return;
+            }
+            const btn = event.target.closest('.diary-add-image');
+            if (!btn) return;
+            const diaryId = btn.getAttribute('data-diary-id');
+            if (!diaryId) return;
+            currentDiaryForImage = diaryId;
+            diaryImageInput.value = '';
+            diaryImageInput.click();
+        });
+
+        diaryImageInput.addEventListener('change', (event) => {
+            const file = event.target.files && event.target.files[0];
+            const diaryId = currentDiaryForImage;
+            if (!file || !diaryId) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const src = e.target.result;
+                if (!src) return;
+
+                if (!appState.diaryImages) appState.diaryImages = {};
+                if (!appState.diaryImages[diaryId]) appState.diaryImages[diaryId] = [];
+                appState.diaryImages[diaryId].push(src);
+
+                const containers = document.querySelectorAll(`[data-diary-id="${diaryId}"] .diary-images`);
+                containers.forEach((container) => {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.alt = '日记插图';
+                    img.className = 'w-16 h-16 rounded-xl object-cover border border-white shadow-sm';
+                    container.appendChild(img);
+                });
+            };
+            reader.readAsDataURL(file);
+
+            currentDiaryForImage = null;
+            diaryImageInput.value = '';
+        });
+    }
+
     // --- 辅助函数：添加地图图钉 ---
     function addMapPin(location) {
         const key = normalizeLocationName(location);
@@ -2374,55 +3225,47 @@
             return;
         }
 
-        const showBubbleShort = (text) => {
-            if (petActionBubble) {
-                petActionBubble.innerHTML = text;
-                petActionBubble.style.opacity = '1';
-                if (petActionBubbleTail) petActionBubbleTail.style.opacity = '1';
-            }
-            setTimeout(() => {
-                if (petActionBubble) petActionBubble.style.opacity = '0';
-                if (petActionBubbleTail) petActionBubbleTail.style.opacity = '0';
-            }, 2500);
-        };
-
         const generateText = () => {
             const personality = appState.petPersonality;
+            const pConfig = PERSONALITY_TYPES[personality];
             const hasTraveled = appState.locations.length > 0;
             const lastLocation = hasTraveled ? appState.locations[appState.locations.length - 1] : '';
-
-            const aiTemplates = {
-                '小火苗': [
-                    "皮卡～冲冲冲！下一站去哪？🔥",
-                    "刚才那只蝴蝶飞好快，我要追上它！",
-                    hasTraveled ? `【${lastLocation}】太热闹啦，超喜欢！` : "快带我出去玩嘛！",
-                    "和你在一起去哪都开心！✨"
-                ],
-                '小灯泡': [
-                    "今天湿度很适合出门～💡",
-                    "那个路标设计我记下了！",
-                    hasTraveled ? `【${lastLocation}】的建筑好有趣～` : "电量满格～",
-                    "这条路是最优解吗？"
-                ],
-                '小云朵': [
-                    "今天的风好温柔啊…☁️",
-                    "路边的小花有点孤单呢。",
-                    hasTraveled ? `有点想念【${lastLocation}】的那片云～` : "不想动…在这儿发呆好不好？",
-                    "静静陪着你就很好啦。"
-                ],
-                '小石头': [
-                    "嗯…这儿挺安静的。🪨",
-                    "保持稳定，别大惊小怪～",
-                    hasTraveled ? `【${lastLocation}】…还行吧。` : "在想宇宙的尽头。",
-                    "（默默看着你）"
-                ]
-            };
 
             if (contextOverride) {
                 return `哇～${contextOverride}，太开心啦！✨`;
             }
-            const pool = aiTemplates[personality];
-            return pool ? pool[Math.floor(Math.random() * pool.length)] : '在等和你一起去旅行～ ✨';
+
+            if (!pConfig) return '在等和你一起去旅行～ ✨';
+
+            // 一定概率使用情境 recall 的记忆作为气泡（体现记忆驱动互动）
+            if (typeof recallRelevantMemories === 'function' && Math.random() < 0.25) {
+                const recalled = recallRelevantMemories({
+                    location: lastLocation,
+                    time_slot: typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '',
+                    recent_locations: appState.locations ? appState.locations.slice(-3) : [],
+                    includeDaily: true,
+                    limit: 3
+                });
+                if (recalled.length > 0) {
+                    const m = recalled[Math.floor(Math.random() * recalled.length)];
+                    const line = (m.narration || m.text || m.summary || '').trim();
+                    if (line) {
+                        if (typeof markMemoryRecalled === 'function') markMemoryRecalled(m);
+                        return line.length <= 80 ? line : line.slice(0, 77) + '…';
+                    }
+                }
+            }
+
+            // 优先检查是否有旅行相关的回忆对话
+            if (hasTraveled && pConfig.travelDialogue && Math.random() > 0.6) {
+                return pConfig.travelDialogue.replace('{location}', lastLocation);
+            }
+            
+            // 否则随机从日常对话库中抽取
+            const dialogues = pConfig.dialogues || [];
+            return dialogues.length > 0 
+                ? dialogues[Math.floor(Math.random() * dialogues.length)] 
+                : '在等和你一起去旅行～ ✨';
         };
 
         const p = getCurrentPersonality();
@@ -2430,17 +3273,13 @@
         
         // 理性人格增加“思考”延迟
         if (delay > 0) {
-            if (petActionBubble) {
-                petActionBubble.innerHTML = '...';
-                petActionBubble.style.opacity = '1';
-                if (petActionBubbleTail) petActionBubbleTail.style.opacity = '1';
-            }
-            // 播放思考动作（如果有）或暂停一下
+            // 先显示“思考中”的省略号，再在延迟后给出正式内容
+            showPetMessage('...', { duration: delay + 500 });
             setTimeout(() => {
-                showBubbleShort(generateText());
+                showPetMessage(generateText());
             }, delay);
         } else {
-            showBubbleShort(generateText());
+            showPetMessage(generateText());
         }
     }
 
@@ -2541,10 +3380,27 @@
     }
 
     // 初始不主动启动，比卡丘在首次进入宠物页时再激活
-    // 但如果默认页就是宠物页（例如后续改动），则立即启动一次
+    // 但如果默认页就是宠物页（例如后续改动），则立即启动一次，并聚焦到比卡丘所在区域
     const petViewEl = document.getElementById('view-petroom');
     if (petViewEl && petViewEl.classList.contains('active')) {
         enterPetRoom();
+
+        // 页面首次加载时，将视口平滑滚动到比卡丘所在区域
+        if (petAvatarRoom && typeof petAvatarRoom.scrollIntoView === 'function') {
+            // 使用轻微延迟，确保布局和房间背景渲染完成
+            setTimeout(() => {
+                try {
+                    petAvatarRoom.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                        inline: 'center'
+                    });
+                } catch (e) {
+                    // 在不支持选项对象的环境中回退到基础调用
+                    petAvatarRoom.scrollIntoView();
+                }
+            }, 300);
+        }
     }
 
     window.__triggerPetTapInteraction = function() {
@@ -2552,7 +3408,7 @@
         petAvatarRoom.style.transform = 'translate(-50%, -10px) scale(1.1)';
         setTimeout(() => { petAvatarRoom.style.transform = 'translateX(-50%)'; }, 200);
         markPetInteraction();
-        triggerAIPetAction("主人摸了摸我的头");
+        triggerAIPetAction("有人轻轻摸了摸我的头");
         setPetState(PET_STATES.INTERACT);
     };
     
@@ -2762,30 +3618,64 @@
             ? `这是我们第 ${visitIndex} 次一起旅行。`
             : '这是我们的第一次真正出发。';
 
+        const pConfig = PERSONALITY_TYPES[personality];
+        const promptDesc = pConfig ? pConfig.promptDesc : '热情、可爱、治愈。';
+        const ownerTitle = getOwnerTitle();
+
+        // 从记忆系统注入：人格设定 + 情境 recall 的旅行记忆（供 LLM 体现「记得」）
+        const semanticProfile = typeof getSemanticProfileForDisplay === 'function' ? getSemanticProfileForDisplay() : null;
+        const relevantMemories = typeof recallRelevantMemories === 'function'
+            ? recallRelevantMemories({ location, time_slot: typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '', includeDaily: false, limit: 2 })
+            : [];
+        const memoryBlock = [];
+        if (semanticProfile && semanticProfile.identity) memoryBlock.push('人格设定：' + semanticProfile.identity);
+        if (semanticProfile && semanticProfile.speaking_style && semanticProfile.speaking_style.description) memoryBlock.push('说话风格：' + semanticProfile.speaking_style.description);
+        relevantMemories.forEach((m) => {
+            const dateStr = m.date || '';
+            const cityLabel = m.location_city || m.location || '';
+            const timeLabel = typeof formatTimeSlotLabel === 'function' ? formatTimeSlotLabel(m.time_slot) : '';
+            const summary = m.summary || m.narration || m.text || '';
+            const sourceLabel = typeof getMemorySourceLabel === 'function' ? getMemorySourceLabel(m) : '';
+            const prefix = [dateStr, cityLabel, timeLabel].filter(Boolean).join(' ');
+            const line = prefix ? `${prefix} —— ${summary}` : summary;
+            const withSource = sourceLabel ? `[${sourceLabel}] ${line}` : line;
+            if (line) memoryBlock.push('旅行记忆：' + withSource);
+        });
+        const memoryText = memoryBlock.length > 0 ? '\n【宠物记忆（可参考以体现连贯）】\n' + memoryBlock.join('\n') : '';
+
+        // 根据性格控制篇幅长短
+        let lengthHint = '4. **篇幅**：80-150字左右，短小精悍，治愈风格。';
+        if (pConfig && pConfig.wordiness === 'chatter') {
+            lengthHint = '4. **篇幅**：120-200字左右，可以稍微多一些，用细节把画面讲清楚。';
+        } else if (pConfig && pConfig.wordiness === 'quiet') {
+            lengthHint = '4. **篇幅**：60-100字左右，语句可以更简短克制。';
+        }
+
         const prompt = [
-            '你是一只电子宠物玩偶（比卡丘），正在用第一人称“我”给主人写一篇旅行日记。',
+            `你是一只电子宠物玩偶（比卡丘），正在用第一人称“我”写一篇旅行日记，记录和${ownerTitle}一起旅行的一个小瞬间。`,
             `\n【当前情境】`,
             `- 地点：${location}${flavorText}`,
             `- 时间：${date} ${timeOfDay}`,
+            `- 我对陪我旅行的人称呼：${ownerTitle}（不要使用“主人”一词）。`,
             `- 你的性格：${personality}`,
-            `  * 小火苗：热情、冲动、高能量。喜欢用感叹号，对一切充满好奇，动作幅度大，喜欢蹦蹦跳跳。`,
-            `  * 小灯泡：理性、好奇、极客范。喜欢分析事物背后的逻辑，关注效率，语气自信但带一点书呆子气。`,
-            `  * 小云朵：感性、温柔、内向。心思细腻，喜欢观察微小的美好，语气软糯，容易害羞或发呆。`,
-            `  * 小石头：理性、内向、沉稳。话少，冷幽默，情绪波动小，喜欢用简短的句子，给人安全感。`,
+            `- 性格描述：${promptDesc}`,
+            memoryText,
             `\n【写作要求】`,
             `1. **颗粒度要细**：不要写宏大的流水账。请着重描写**一个具体的瞬间**或**一个微小的细节**。`,
             `2. **调动感官**：必须包含至少一种**视觉、听觉或嗅觉**的描写。`,
-            `3. **情感连接**：表达对主人的依赖或一起旅行的快乐。`,
-            `4. **篇幅**：80-150字左右，短小精悍，治愈风格。`,
+            `3. **情感连接**：表达对${ownerTitle}的陪伴和一起旅行的快乐，但不要直接对${ownerTitle}说话。`,
+            lengthHint,
             `5. **格式**：只输出日记正文，不要标题，不要markdown格式。`,
-        ].join('\n');
+            `6. **叙述角度**：全文保持第一人称“我”的日记语气，像写给自己看的记录，不要像聊天或写信，不要频繁用“你”直接和读者说话。`,
+            relevantMemories.length > 0 ? `7. **记忆呼应**：上方【宠物记忆】中若有旅行记忆，可在合适处自然提一句与过往旅行或记忆的关联（例如对比、延续、呼应），让读者感受到“记得”；不必每篇都强求，有机会就体现。` : ''
+        ].filter(Boolean).join('\n');
 
         const body = {
             model: OPENROUTER_MODEL_ID,
             messages: [
                 {
                     role: 'system',
-                    content: '你是一只可爱、治愈系的电子宠物，用第一人称“我”给主人写旅行日记。整体语气可爱、治愈，像陪伴型电子宠物，短句为主，避免过于书面或成熟。语言轻松、有画面感，避免负面情绪和不当内容。'
+                    content: '你是一只可爱、治愈系的电子宠物，用第一人称“我”写旅行日记。整体语气可爱、治愈，像陪伴型电子宠物，短句为主，避免过于书面或成熟。语言轻松、有画面感，避免负面情绪和不当内容。不要出现“主人”一词，尽量少用“你”直接和读者对话。'
                 },
                 {
                     role: 'user',
@@ -2818,7 +3708,8 @@
                 return { ok: false, error: 'empty_content' };
             }
 
-            return { ok: true, content: content.trim() };
+            const travelMemoryCount = relevantMemories.length;
+            return { ok: true, content: content.trim(), memoryCount: travelMemoryCount };
         } catch (error) {
             if (error.name === 'AbortError') {
                 return { ok: false, error: 'timeout' };
@@ -2835,6 +3726,7 @@
         const flavor = cityFlavorMap[normalized];
         const visitIndex = appState.locations.length;
         const progressText = visitIndex > 1 ? `这是我们的第${visitIndex}次旅行打卡。` : '这是我们的第一次真正出发。';
+        const ownerTitle = getOwnerTitle();
 
         const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
         const spots = (flavor && flavor.highlights) || [];
@@ -2860,7 +3752,7 @@
             if (flavor) {
                 return `风轻轻吹过【${location}】的街道，我在${h1}${h2 ? `，又在${h2}` : ''}停下脚步，把光和云都藏进心里啦。${progressText}`;
             }
-            return `风吹过【${location}】的街道，慢慢走、慢慢看，挑一两个瞬间悄悄收藏，等回去和你一起回味～${progressText}`;
+            return `风吹过【${location}】的街道，慢慢走、慢慢看，挑一两个瞬间悄悄收藏，等回去和${ownerTitle}一起回味～${progressText}`;
         }
 
         // 小石头及其他：更克制、冷静
@@ -2871,7 +3763,7 @@
     }
 
     // --- 辅助函数：生成日记 ---
-    function generateDiaryEntry(location, content, sceneOverride) {
+    function generateDiaryEntry(location, content, sceneOverride, memoryCount, memorySources) {
         const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
         const personality = appState.petPersonality;
         const personalityConfig = PERSONALITY_TYPES[personality] || null;
@@ -2879,55 +3771,816 @@
             || (personalityConfig && personalityConfig.icon)
             || '✨';
         const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
+        const diaryId = ++diarySeq;
+        if (!appState.diaryImages) appState.diaryImages = {};
+        if (!appState.diaryImages[diaryId]) appState.diaryImages[diaryId] = [];
         
         const text = content && typeof content === 'string' && content.trim()
             ? content.trim()
             : buildDiaryText(location, personality);
+
+        const hasSources = Array.isArray(memorySources) && memorySources.length > 0;
+        const count = typeof memoryCount === 'number' && memoryCount > 0 ? memoryCount : (hasSources ? memorySources.length : 0);
+        const memoryHint = count > 0
+            ? `<div class="mt-1 text-[10px] text-gray-400 memory-hint-block" data-diary-id="${diaryId}">
+                <span class="memory-hint-summary cursor-pointer hover:text-[#ff8fab]">本篇参考了 ${count} 条旅行记忆</span>
+                ${hasSources ? `<div class="memory-sources-detail hidden mt-1 text-[10px] text-teal-600">来源：${memorySources.map((s) => escapeHtml(s)).join('、')}</div>` : ''}
+               </div>`
+            : '';
 
         const sceneImageBlock = scene ? `
             <img src="${scene.image}" alt="${scene.label}" class="w-16 h-16 rounded-xl object-cover border border-white shadow-sm mb-2">
         ` : '';
 
         const diaryHTML = `
-            <div class="glass-card rounded-2xl p-4 transform transition-all hover:scale-[1.01] shadow-sm animate-[fadeIn_0.5s_ease-out]">
+            <div class="glass-card rounded-2xl p-4 transform transition-all hover:scale-[1.01] shadow-sm animate-[fadeIn_0.5s_ease-out]" data-diary-id="${diaryId}">
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-xs font-bold text-white bg-[#cdb4db] px-2 py-1 rounded-md">${date}</span>
                     <span class="text-xs text-gray-500 font-bold"><i class="ph-fill ph-map-pin text-[#ff8fab]"></i> ${location}</span>
                 </div>
+                ${memoryHint}
                 <div class="flex gap-3">
                     <div class="flex flex-col items-center">
                         ${sceneImageBlock}
                         <div class="text-3xl bg-white rounded-xl p-2 h-fit shadow-inner">${avatar}</div>
                     </div>
-                    <p class="text-gray-700 text-sm leading-relaxed">${text}</p>
+                    <div class="flex-1 flex flex-col gap-2">
+                        <p class="text-gray-700 text-sm leading-relaxed">${text}</p>
+                        <div class="diary-images mt-1 flex gap-2 flex-wrap"></div>
+                        <button
+                            type="button"
+                            class="diary-add-image inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/80 border border-dashed border-gray-300 text-[11px] text-gray-600 hover:border-[#ff8fab] hover:text-[#ff8fab] transition-colors"
+                            data-diary-id="${diaryId}"
+                        >
+                            <i class="ph-fill ph-camera"></i>
+                            <span>插入图片</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
         diaryList.insertAdjacentHTML('afterbegin', diaryHTML);
-        diaryBadge.classList.remove('hidden'); // 显示日记未读红点
+        if (diaryBadge) diaryBadge.classList.remove('hidden'); // 显示日记未读红点
         if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
+        return { diaryId, date };
     }
 
     // --- 辅助函数：在橱柜中新增纪念品 ---
     const CABINET_SLOTS = 12;
-    const cabinetPlaceholderHTML = `<div class="cabinet-slot cabinet-slot--empty" data-placeholder="cabinet-empty"><img src="assets/cabinet-empty.svg" alt="橱柜" class="cabinet-empty-icon mb-1" width="40" height="40"><span>去旅行解锁</span></div>`;
+    const cabinetPlaceholderHTML = `<div class="cabinet-slot cabinet-slot--empty" data-placeholder="cabinet-empty"><div class="cabinet-slot__media"><img src="assets/cabinet-empty.svg" alt="橱柜" class="cabinet-empty-icon" width="40" height="40"></div><span>去旅行解锁</span></div>`;
+
+    // --- 记忆墙渲染：随机散落在墙上的拍立得 ---
+    function renderMemoryWall() {
+        const wall = document.getElementById('memory-wall');
+        if (!wall) return;
+        
+        wall.innerHTML = '';
+        const items = appState.cabinetItems || [];
+        // 取最近 5 张展示，倒序（最新的在最上面）
+        const recentItems = items.slice(0, 5); 
+        
+        recentItems.forEach((item, index) => {
+            if (!item.scene && !item.location) return;
+            
+            const { short: shortLabel, full: fullLabel } = getShortLabel(item);
+            const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+            
+            const div = document.createElement('div');
+            div.className = 'polaroid-photo';
+            
+            // 随机位置与角度 (基于 wall 的百分比)
+            const randomX = 10 + (index * 12) + (Math.random() * 10 - 5); 
+            const randomY = 10 + (index * 5) + (Math.random() * 20 - 10);
+            const rotate = (Math.random() * 24 - 12).toFixed(1);
+            
+            div.style.left = `${Math.min(70, Math.max(0, randomX))}%`; 
+            div.style.top = `${Math.min(60, Math.max(0, randomY))}%`;
+            div.style.setProperty('--rotate', `${rotate}deg`);
+            div.style.zIndex = index + 1;
+            
+            div.innerHTML = `
+                <img src="${imgSrc}" alt="${escapeHtml(fullLabel)}">
+                <span>${escapeHtml(shortLabel)}</span>
+            `;
+            
+            div.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openDiaryModal(); // 点击照片打开日记
+            });
+            
+            wall.appendChild(div);
+        });
+    }
+
+    function getCurrentTimeSlot() {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 12) return 'morning';
+        if (hour >= 12 && hour < 18) return 'afternoon';
+        if (hour >= 18 && hour < 23) return 'evening';
+        return 'night';
+    }
+
+    function formatTimeSlotLabel(timeSlot) {
+        const map = {
+            morning: '早上',
+            afternoon: '下午',
+            evening: '晚上',
+            night: '深夜'
+        };
+        return map[timeSlot] || '';
+    }
+
+    function getMemorySourceLabel(m) {
+        if (!m) return '';
+        if (m.source === 'nfc' && m.nfc_source) {
+            const src = m.nfc_source;
+            if (PRESET_NFC_SOURCES.merchants.includes(src)) return 'NFC-商家·' + src;
+            if (PRESET_NFC_SOURCES.dolls.includes(src)) return 'NFC-玩偶·' + src;
+            return 'NFC-' + src;
+        }
+        if (m.source === 'checkin' && (m.location_city || m.location)) return '打卡-' + (m.location_city || m.location);
+        if (m.source === 'interaction') return '互动-' + (formatTimeSlotLabel(m.time_slot) || '');
+        return m.source || '打卡';
+    }
+
+    function buildEpisodicSummary({ city, spot, timeSlot, personalityKey }) {
+        const timeLabel = formatTimeSlotLabel(timeSlot);
+        const placeText = spot ? `${city}的${spot}` : city;
+
+        let emotion = 'calm';
+        let summary = '';
+
+        const p = personalityKey || appState.petPersonality || '小火苗';
+
+        if (p === '小火苗') {
+            emotion = 'excited';
+            summary = `${timeLabel}在${placeText}一路蹦蹦跳跳，差点把照片都晃糊了。`;
+        } else if (p === '小云朵') {
+            emotion = 'tender';
+            summary = `${timeLabel}在${placeText}慢慢走慢慢看，把安静的风景都藏进心里。`;
+        } else if (p === '小灯泡') {
+            emotion = 'curious';
+            summary = `${timeLabel}在${placeText}到处张望，记下好多细节准备回去慢慢研究。`;
+        } else {
+            emotion = 'nostalgic';
+            summary = `${timeLabel}在${placeText}走得不快不慢，像是给这条路盖了一个小小的纪念章。`;
+        }
+
+        return { summary, emotion };
+    }
+
+    // --- 宠物记忆：数据与渲染 ---
+    /**
+     * 记忆机制说明（appState.memories）：
+     * - 触发：
+     *   - 打卡成功后，为本次日记写入一条旅行情景记忆（travel，episodic）；
+     *   - 首次打开记忆页时，ensureMemorySeeds 写入示例旅行/日常/习惯记忆作为种子。
+     * - 内容：
+     *   - episodic.travel：date/location_city/location_spot/time_slot/personality/summary/emotion/diaryId/scene 等；
+     *   - summary 优先来自 /api/memory-summary 的 LLM 抽取；当接口超时或解析失败时，回退到 buildEpisodicSummary 模板生成。
+     * - 用途：
+     *   - generateDiaryWithAIGC 在写日记时注入与当前地点相关的旅行记忆（【宠物记忆】）；
+     *   - getPetBubbleText 随机抽取旅行/日常记忆作为宠物房间气泡文案；
+     *   - 记忆页 renderMemories / openMemoryEditForm 展示与编辑 episodic、semanticProfile 与 habit。
+     */
+    // 支持可选 summary/emotion/key_facts/source/nfc_source：若由 LLM 记忆抽取接口返回则传入，否则用 buildEpisodicSummary 模板
+    function appendEpisodicMemory({ date, location, scene, diaryId, summary: givenSummary, emotion: givenEmotion, key_facts: givenKeyFacts, source: givenSource, nfc_source: givenNfcSource }) {
+        if (!appState.memories) {
+            appState.memories = { episodic: [], semantic: [], semanticProfile: null, habit: [] };
+        }
+        const normalized = normalizeLocationName(location);
+        const flavor = cityFlavorMap[normalized];
+        const city = normalized || location || '未知地点';
+        const timeSlot = getCurrentTimeSlot();
+        const personalityKey = appState.petPersonality || '小火苗';
+
+        // 记忆地点只锚定用户输入：仅用同城 flavor 高亮点，不用随机掉落的 scene.label（避免「潮州打卡却记成广州」）
+        const spot = (flavor && flavor.highlights && flavor.highlights.length) ? flavor.highlights[0] : '';
+
+        const summaryInfo = (givenSummary && givenEmotion)
+            ? { summary: givenSummary, emotion: givenEmotion }
+            : buildEpisodicSummary({ city, spot, timeSlot, personalityKey });
+        const summary = summaryInfo.summary;
+        const emotion = summaryInfo.emotion;
+
+        // importance: 首次打卡该城市 + 高情绪(excited/nostalgic) 更高
+        const visitCount = (appState.locations || []).filter((l) => (l || '').indexOf(city) >= 0 || (city || '').indexOf(l || '') >= 0).length;
+        const isFirstVisit = visitCount <= 1;
+        const highEmotion = emotion === 'excited' || emotion === 'nostalgic';
+        const importance = Math.min(1, Math.max(0, 0.5 + (isFirstVisit ? 0.2 : 0) + (highEmotion ? 0.2 : (emotion === 'tender' || emotion === 'curious' ? 0.1 : 0))));
+
+        const now = new Date();
+        const record = {
+            type: 'episodic',
+            category: 'travel',
+            date,
+            location,
+            location_city: city,
+            location_spot: '打卡 ' + city,
+            time_slot: timeSlot,
+            personality: personalityKey,
+            emotion,
+            summary,
+            diaryId: diaryId || null,
+            scene: scene || null,
+            scene_label: scene && scene.label ? scene.label : null,
+            narration: summary,
+            text: summary,
+            strength: 0.9,
+            last_recalled_at: null,
+            recall_count: 0,
+            key_facts: Array.isArray(givenKeyFacts) ? givenKeyFacts.slice(0, 4) : [],
+            importance,
+            source: givenSource || 'checkin',
+            nfc_source: givenNfcSource || null,
+            time_window: 'current'
+        };
+
+        appState.memories.episodic = appState.memories.episodic || [];
+        appState.memories.episodic.unshift(record);
+        if (appState.memories.episodic.length > 30) {
+            appState.memories.episodic = appState.memories.episodic.slice(0, 30);
+        }
+    }
+
+    function buildSemanticMemories() {
+        const pCfg = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+        if (!pCfg || !pCfg.memorySnippets) return [];
+        const ownerTitle = getOwnerTitle();
+        return pCfg.memorySnippets.slice(0, 3).map((text) => ({
+            type: 'semantic',
+            text: text.replace(/\{ownerTitle\}/g, ownerTitle)
+        }));
+    }
+
+    /** 人格设定：用于记忆页「性格碎片」展示；优先 appState.memories.semanticProfile，否则从当前人格拼默认 */
+    function getSemanticProfileForDisplay() {
+        const profile = appState.memories && appState.memories.semanticProfile;
+        if (profile && (profile.identity || profile.preferences)) return profile;
+        const p = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+        const ownerTitle = getOwnerTitle();
+        if (!p) return { identity: '', preferences: {}, speaking_style: {}, call_user: [ownerTitle] };
+        return {
+            identity: `我是一只皮卡丘，目标是成为旅行大师。`,
+            preferences: {
+                food: '我最爱的东西是番茄酱（Ketchup），看到都会眼睛发光。',
+                dislikes: '我不太喜欢被关进精灵球（Poké Ball），那样会觉得好闷。',
+                abilities: '我高兴的时候会忍不住放电，尾巴还能提前感到天气要变。'
+            },
+            speaking_style: {
+                description: `我说话喜欢加「Pika～」，看到熟悉的人会叫「${ownerTitle}」。`,
+                verbal_tics: ['Pika～', 'Pika pika～'],
+                call_user: [ownerTitle]
+            },
+            call_user: [ownerTitle],
+            tags: ['pikachu', 'travel_master', 'semantic_profile']
+        };
+    }
+
+    /** 情景记忆·旅行：episodic 且 category 为 travel 或未定义（兼容旧数据） */
+    function getEpisodicTravel() {
+        const list = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
+        return list.filter((m) => (m.category === 'travel' || m.category === undefined));
+    }
+
+    const MEMORY_STRENGTH_THRESHOLD = 0.3;
+    const MEMORY_DECAY_PER_WEEK = 0.95;
+
+    /** 衰减记忆强度：按日期/上次 recall 时间衰减，strength < 阈值视为淡忘 */
+    function decayMemoryStrength() {
+        const episodic = appState.memories && appState.memories.episodic;
+        if (!episodic || episodic.length === 0) return;
+        const now = Date.now();
+        const oneWeek = 7 * 24 * 60 * 60 * 1000;
+        episodic.forEach((m) => {
+            const strength = typeof m.strength === 'number' ? m.strength : 0.9;
+            let refTime = now;
+            if (m.last_recalled_at) {
+                const t = new Date(m.last_recalled_at).getTime();
+                if (!isNaN(t)) refTime = t;
+            } else if (m.date) {
+                const t = new Date(String(m.date).replace(/-/g, '/')).getTime();
+                if (!isNaN(t)) refTime = t;
+            }
+            const elapsedWeeks = Math.max(0, (now - refTime) / oneWeek);
+            const decayed = strength * Math.pow(MEMORY_DECAY_PER_WEEK, Math.floor(elapsedWeeks));
+            m.strength = Math.max(0, Math.min(1, decayed));
+        });
+    }
+
+    /**
+     * 情境触发 recall：按 recallScore 排序返回最相关的记忆
+     * @param {Object} context - { location?, time_slot?, recent_locations?, limit?, includeDaily? }
+     * @returns {Array} 排序后的记忆列表
+     */
+    function recallRelevantMemories(context) {
+        decayMemoryStrength();
+        const travel = getEpisodicTravel();
+        const daily = (context?.includeDaily !== false) && (appState.memories && appState.memories.episodic)
+            ? appState.memories.episodic.filter((m) => m.category === 'daily')
+            : [];
+        const all = travel.concat(daily);
+        const limit = typeof context?.limit === 'number' ? context.limit : 3;
+        const loc = (context?.location || '').trim();
+        const timeSlot = context?.time_slot || (typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '');
+        const recentLocs = context?.recent_locations || (appState.locations ? appState.locations.slice(-3) : []);
+        const contextStr = [loc].concat(recentLocs).filter(Boolean).join(' ');
+
+        const scored = all.map((m, idx) => {
+            const strength = typeof m.strength === 'number' ? m.strength : 0.9;
+            if (strength < MEMORY_STRENGTH_THRESHOLD) return { m, score: -1 };
+            const importance = typeof m.importance === 'number' ? m.importance : 0.5;
+            const recency = 1 - idx / Math.max(1, all.length);
+            let relevance = 0;
+            const cityLabel = (m.location_city || m.location || '').trim();
+            if (loc && cityLabel && (cityLabel.indexOf(loc) >= 0 || loc.indexOf(cityLabel) >= 0)) relevance += 0.8;
+            else if (recentLocs.some((r) => cityLabel && (cityLabel.indexOf(r) >= 0 || (r || '').indexOf(cityLabel) >= 0))) relevance += 0.5;
+            if (timeSlot && m.time_slot === timeSlot) relevance += 0.2;
+            const facts = m.key_facts || [];
+            if (facts.some((f) => contextStr && contextStr.indexOf(f) >= 0)) relevance += 0.3;
+            const score = 0.3 * recency + 0.4 * relevance + 0.2 * strength + 0.1 * importance;
+            return { m, score };
+        });
+
+        return scored
+            .filter((x) => x.score >= 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, limit)
+            .map((x) => x.m);
+    }
+
+    /** 更新记忆的 recall 状态（被气泡/日记使用时调用） */
+    function markMemoryRecalled(memory) {
+        if (!memory || !appState.memories || !appState.memories.episodic) return;
+        const idx = appState.memories.episodic.indexOf(memory);
+        if (idx < 0) return;
+        const m = appState.memories.episodic[idx];
+        m.last_recalled_at = new Date().toISOString();
+        m.recall_count = (m.recall_count || 0) + 1;
+        m.strength = Math.min(1, (m.strength ?? 0.9) + 0.05);
+    }
+
+    /** 情景记忆·日常：episodic 且 category 为 daily */
+    function getEpisodicDaily() {
+        const list = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
+        return list.filter((m) => m.category === 'daily');
+    }
+
+    /** 习惯总结列表 */
+    function getHabitMemories() {
+        return (appState.memories && appState.memories.habit) ? appState.memories.habit : [];
+    }
+
+    let currentMemoryTab = 'travel'; // 'travel' | 'character'
+
+    function renderMemories() {
+        if (!modalBody) return;
+
+        const travelList = getEpisodicTravel();
+        const dailyList = getEpisodicDaily();
+        const profile = getSemanticProfileForDisplay();
+        const habits = getHabitMemories();
+
+        const countForTab = currentMemoryTab === 'travel' ? (travelList.length + dailyList.length) : ((profile && (profile.identity || (profile.preferences && Object.keys(profile.preferences).length > 0)) ? 1 : 0) + habits.length);
+        const countText = countForTab + ' 条记录';
+
+        const tabBarHTML = `
+            <div class="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
+                <div class="flex gap-4">
+                    <button type="button" id="memory-tab-travel" class="memory-tab text-sm font-bold pb-1 border-b-2 transition-colors ${currentMemoryTab === 'travel' ? 'text-teal-700 border-teal-600' : 'text-gray-400 border-transparent'}">旅行记忆</button>
+                    <button type="button" id="memory-tab-character" class="memory-tab text-sm font-bold pb-1 border-b-2 transition-colors ${currentMemoryTab === 'character' ? 'text-teal-700 border-teal-600' : 'text-gray-400 border-transparent'}">性格碎片</button>
+                </div>
+                <span class="text-xs text-gray-400">${countText}</span>
+            </div>
+        `;
+
+        function getTimeWindow(m) {
+            if (m.time_window) return m.time_window;
+            const d = m.date ? new Date(m.date).getTime() : 0;
+            if (!d) return 'current';
+            const now = Date.now();
+            const diff = now - d;
+            if (diff < 24 * 60 * 60 * 1000) return 'current';
+            if (diff < 7 * 24 * 60 * 60 * 1000) return 'week';
+            if (diff < 30 * 24 * 60 * 60 * 1000) return 'month';
+            return 'year';
+        }
+        function getSourceLabel(m) { return getMemorySourceLabel(m); }
+        function getCheckinFrequency(loc) {
+            const locStr = (loc || '').trim();
+            if (!locStr) return 0;
+            return (appState.locations || []).filter((l) => {
+                const s = (l || '').trim();
+                return s && (s.indexOf(locStr) >= 0 || locStr.indexOf(s) >= 0);
+            }).length;
+        }
+        function getInteractionFrequency() {
+            return (appState.interactionLog || []).length;
+        }
+        function makeEpisodicCard(m, isDaily, episodicIndex) {
+            const title = isDaily ? (m.source_event ? String(m.source_event).replace(/_/g, ' ') : '日常') : (m.location_spot || ('打卡 ' + (m.location_city || m.location || '温馨小屋')));
+            const date = m.date || '';
+            const timeLabel = formatTimeSlotLabel(m.time_slot);
+            const metaLine = timeLabel ? `${date} · ${timeLabel}` : date;
+            const summary = m.summary || m.narration || m.text || '';
+            const habitInf = m.habit_inference || '';
+            const emotion = m.emotion || '';
+            const sourceLabel = getSourceLabel(m);
+            let freqLine = '';
+            if (m.source === 'checkin') {
+                const loc = m.location_city || m.location;
+                const cf = getCheckinFrequency(loc);
+                if (cf > 0) freqLine = `<span class="text-[10px] text-gray-500">已打卡 ${cf} 次</span>`;
+            } else if (m.source === 'interaction') {
+                const iF = getInteractionFrequency();
+                if (iF > 0) freqLine = `<span class="text-[10px] text-gray-500">近 7 天互动 ${iF} 次</span>`;
+            }
+            let emotionClass = 'bg-amber-100 text-amber-800';
+            if (emotion === 'tender') emotionClass = 'bg-pink-100 text-pink-800';
+            else if (emotion === 'nostalgic') emotionClass = 'bg-purple-100 text-purple-800';
+            else if (emotion === 'excited') emotionClass = 'bg-orange-100 text-orange-800';
+            else if (emotion === 'calm') emotionClass = 'bg-sky-100 text-sky-800';
+            else if (emotion === 'curious') emotionClass = 'bg-emerald-100 text-emerald-800';
+            const idx = episodicIndex != null ? episodicIndex : -1;
+            return `
+                <div class="memory-card bg-white rounded-xl p-3 shadow-md border border-gray-100 text-left relative" data-memory-type="episodic" data-episodic-index="${idx}">
+                    <div class="absolute top-2 left-2 text-[#ff9a9e]"><i class="ph-fill ph-paperclip-tilt text-sm"></i></div>
+                    <button type="button" class="memory-edit-btn absolute top-2 right-2 text-[10px] text-gray-500 hover:text-[#ff8fab] px-1.5 py-0.5 rounded">编辑</button>
+                    <div class="text-[10px] text-gray-400 mb-1">${escapeHtml(metaLine)}</div>
+                    <div class="font-bold text-gray-800 text-sm mb-1">${escapeHtml(title)}${isDaily ? ' <span class="text-[10px] font-normal text-gray-500 rounded bg-gray-100 px-1">日常</span>' : ''} <span class="text-[10px] font-normal text-teal-600 rounded bg-teal-50 px-1">${escapeHtml(sourceLabel)}</span>${freqLine ? ' ' + freqLine : ''}</div>
+                    <div class="text-xs text-gray-700 leading-relaxed">${escapeHtml(summary)}</div>
+                    ${habitInf ? '<div class="text-[11px] text-gray-500 mt-1">' + escapeHtml(habitInf) + '</div>' : ''}
+                    ${emotion ? '<span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ' + emotionClass + '">' + escapeHtml(emotion) + '</span>' : ''}
+                </div>
+            `;
+        }
+
+        const episodic = appState.memories.episodic || [];
+        const travelCardsWithIndex = [];
+        const dailyCardsWithIndex = [];
+        episodic.forEach((m, i) => {
+            if (m.category === 'daily') dailyCardsWithIndex.push({ m, i });
+            else travelCardsWithIndex.push({ m, i });
+        });
+        const currentTravel = travelCardsWithIndex.filter(({ m }) => getTimeWindow(m) === 'current');
+        const historyTravel = travelCardsWithIndex.filter(({ m }) => getTimeWindow(m) !== 'current');
+        const currentDaily = dailyCardsWithIndex.filter(({ m }) => getTimeWindow(m) === 'current');
+        const historyDaily = dailyCardsWithIndex.filter(({ m }) => getTimeWindow(m) !== 'current');
+        const currentSection = currentTravel.length + currentDaily.length > 0
+            ? '<div class="mb-3"><div class="text-[11px] font-bold text-gray-500 mb-2">当前记忆</div><div class="flex flex-col gap-2">' + currentTravel.map(({ m, i }) => makeEpisodicCard(m, false, i)).join('') + currentDaily.map(({ m, i }) => makeEpisodicCard(m, true, i)).join('') + '</div></div>'
+            : '';
+        const historySection = historyTravel.length + historyDaily.length > 0
+            ? '<div><div class="text-[11px] font-bold text-gray-500 mb-2">历史记忆（本周/本月/本年）</div><div class="flex flex-col gap-2">' + historyTravel.map(({ m, i }) => makeEpisodicCard(m, false, i)).join('') + historyDaily.map(({ m, i }) => makeEpisodicCard(m, true, i)).join('') + '</div></div>'
+            : '';
+        const travelCardsHTML = currentMemoryTab === 'travel' && (travelCardsWithIndex.length > 0 || dailyCardsWithIndex.length > 0)
+            ? '<div class="flex flex-col gap-0">' + currentSection + historySection + '</div>'
+            : '';
+        const travelEmptyHTML = (currentMemoryTab === 'travel' && travelCardsWithIndex.length === 0 && dailyCardsWithIndex.length === 0)
+            ? '<p class="text-center text-xs text-gray-500 py-4">我还没有记下这类呢，带我去打卡一两个地方试试吧。</p>'
+            : '';
+
+        const identityBlock = (profile && (profile.identity || (profile.preferences && Object.keys(profile.preferences).length > 0))) ? `
+            <div class="memory-card bg-white rounded-xl p-3 shadow-md border border-gray-100 text-left relative mb-2" data-memory-type="semanticProfile">
+                <div class="absolute top-2 left-2 text-[#ff9a9e]"><i class="ph-fill ph-paperclip-tilt text-sm"></i></div>
+                <button type="button" class="memory-edit-btn absolute top-2 right-2 text-[10px] text-gray-500 hover:text-[#ff8fab] px-1.5 py-0.5 rounded">编辑</button>
+                <div class="text-[10px] text-gray-400 mb-1">人格设定</div>
+                ${profile.identity ? '<div class="text-xs text-gray-700 mb-2">' + escapeHtml(profile.identity) + '</div>' : ''}
+                ${(profile.preferences && (profile.preferences.food || profile.preferences.dislikes || profile.preferences.abilities)) ? '<div class="text-[11px] text-gray-600 space-y-1">' + (profile.preferences.food ? '<div>喜好：' + escapeHtml(profile.preferences.food) + '</div>' : '') + (profile.preferences.dislikes ? '<div>不喜欢：' + escapeHtml(profile.preferences.dislikes) + '</div>' : '') + (profile.preferences.abilities ? '<div>能力：' + escapeHtml(profile.preferences.abilities) + '</div>' : '') + '</div>' : ''}
+                ${(profile.speaking_style && profile.speaking_style.description) ? '<div class="text-[11px] text-gray-500 mt-2">' + escapeHtml(profile.speaking_style.description) + '</div>' : ''}
+                ${(profile.call_user && profile.call_user.length) ? '<div class="text-[10px] text-gray-400 mt-1">称呼你：' + escapeHtml(profile.call_user.join('、')) + '</div>' : ''}
+            </div>
+        ` : '';
+
+        const habitCardsHTML = (currentMemoryTab === 'character' && habits.length > 0) ? habits.map((h, idx) =>
+            '<div class="memory-card bg-white rounded-xl p-3 shadow-md border border-gray-100 text-left relative" data-memory-type="habit" data-habit-index="' + idx + '"><button type="button" class="memory-edit-btn absolute top-2 right-2 text-[10px] text-gray-500 hover:text-[#ff8fab] px-1.5 py-0.5 rounded">编辑</button><div class="text-[10px] text-gray-400 mb-1">' + escapeHtml(h.generated_at || '') + '</div><div class="text-xs text-gray-700 leading-relaxed">' + escapeHtml(h.summary || '') + '</div></div>'
+        ).join('') : '';
+
+        const characterEmptyHTML = (currentMemoryTab === 'character' && !(profile && profile.identity) && habits.length === 0) ? '<p class="text-center text-xs text-gray-500 py-4">我还没有记下这类呢。</p>' : '';
+
+        const travelPanelHTML = currentMemoryTab === 'travel' ? (travelCardsHTML || travelEmptyHTML) : '';
+        const characterPanelHTML = currentMemoryTab === 'character' ? (identityBlock + habitCardsHTML + (characterEmptyHTML && !identityBlock && !habitCardsHTML ? characterEmptyHTML : '')) : '';
+
+        const bodyHTML = '<div class="flex flex-col gap-0 text-xs memory-modal-content">' + tabBarHTML + '<div id="memory-tab-content" class="overflow-y-auto flex-1 min-h-0">' + travelPanelHTML + characterPanelHTML + '</div></div>';
+
+        modalBody.innerHTML = bodyHTML;
+
+        const tabTravel = document.getElementById('memory-tab-travel');
+        const tabCharacter = document.getElementById('memory-tab-character');
+        if (tabTravel) tabTravel.addEventListener('click', function () { currentMemoryTab = 'travel'; renderMemories(); });
+        if (tabCharacter) tabCharacter.addEventListener('click', function () { currentMemoryTab = 'character'; renderMemories(); });
+
+        modalBody.querySelectorAll('.memory-edit-btn').forEach((btn) => {
+            const card = btn.closest('[data-memory-type]');
+            if (!card) return;
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const type = card.getAttribute('data-memory-type');
+                if (type === 'episodic') { openMemoryEditForm('episodic', parseInt(card.getAttribute('data-episodic-index'), 10)); }
+                else if (type === 'semanticProfile') { openMemoryEditForm('semanticProfile', null); }
+                else if (type === 'habit') { openMemoryEditForm('habit', parseInt(card.getAttribute('data-habit-index'), 10)); }
+            });
+        });
+    }
+
+    function openMemoryEditForm(type, index) {
+        if (!modalTitle || !modalBody) return;
+        const ownerTitle = getOwnerTitle();
+        if (type === 'episodic' && index >= 0 && appState.memories && appState.memories.episodic && appState.memories.episodic[index]) {
+            const m = appState.memories.episodic[index];
+            const title = m.location_spot || m.location_city || m.location || (m.source_event || '');
+            modalTitle.textContent = '编辑记忆';
+            modalBody.innerHTML = `
+                <div class="flex flex-col gap-2 text-xs">
+                    <label>标题/地点 <input type="text" id="edit-episodic-title" class="w-full border rounded px-2 py-1" value="${escapeHtml(title)}" placeholder="如：打卡 温馨小屋"></label>
+                    <label>日期 <input type="text" id="edit-episodic-date" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.date || '')}" placeholder="YYYY-MM-DD"></label>
+                    <label>记忆摘要（第一人称，1 句为主） <textarea id="edit-episodic-narration" class="w-full border rounded px-2 py-1 h-20" placeholder="我…">${escapeHtml(m.summary || m.narration || m.text || '')}</textarea></label>
+                    <label>习惯推断（可选） <textarea id="edit-episodic-habit" class="w-full border rounded px-2 py-1 h-16" placeholder="我发现你…">${escapeHtml(m.habit_inference || '')}</textarea></label>
+                    <label>情绪（可选） <input type="text" id="edit-episodic-emotion" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.emotion || '')}" placeholder="excited / tender / nostalgic / calm / curious"></label>
+                    <div class="flex gap-2 mt-2">
+                        <button type="button" id="memory-edit-save" class="px-3 py-1.5 bg-[#ff8fab] text-white rounded font-bold">保存</button>
+                        <button type="button" id="memory-edit-cancel" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded">取消</button>
+                    </div>
+                </div>
+            `;
+            modalBody.querySelector('#memory-edit-save').addEventListener('click', function () {
+                const titleVal = (document.getElementById('edit-episodic-title') || {}).value || '';
+                const dateVal = (document.getElementById('edit-episodic-date') || {}).value || '';
+                const narrVal = (document.getElementById('edit-episodic-narration') || {}).value || '';
+                const habitVal = (document.getElementById('edit-episodic-habit') || {}).value || '';
+                const emotionVal = (document.getElementById('edit-episodic-emotion') || {}).value || '';
+                if (!narrVal.trim()) return;
+                const rec = appState.memories.episodic[index];
+                if (rec.category === 'daily') {
+                    rec.source_event = titleVal || rec.source_event;
+                } else {
+                    rec.location_spot = titleVal || rec.location_spot;
+                    rec.location_city = titleVal || rec.location_city;
+                    rec.location = titleVal || rec.location;
+                }
+                rec.date = dateVal || rec.date;
+                rec.summary = narrVal;
+                rec.narration = narrVal;
+                rec.text = narrVal;
+                rec.habit_inference = habitVal;
+                rec.emotion = emotionVal || undefined;
+                modalTitle.textContent = '宠物记忆';
+                renderMemories();
+            });
+            modalBody.querySelector('#memory-edit-cancel').addEventListener('click', function () { modalTitle.textContent = '宠物记忆'; renderMemories(); });
+            return;
+        }
+        if (type === 'semanticProfile' && appState.memories && appState.memories.semanticProfile) {
+            const p = appState.memories.semanticProfile;
+            modalTitle.textContent = '编辑记忆';
+            modalBody.innerHTML = `
+                <div class="flex flex-col gap-2 text-xs">
+                    <label>身份（我…） <textarea id="edit-semantic-identity" class="w-full border rounded px-2 py-1 h-16">${escapeHtml(p.identity || '')}</textarea></label>
+                    <label>喜好（食物等） <input type="text" id="edit-semantic-food" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.preferences && p.preferences.food) || '')}"></label>
+                    <label>不喜欢 <input type="text" id="edit-semantic-dislikes" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.preferences && p.preferences.dislikes) || '')}"></label>
+                    <label>能力 <input type="text" id="edit-semantic-abilities" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.preferences && p.preferences.abilities) || '')}"></label>
+                    <label>说话风格描述 <input type="text" id="edit-semantic-desc" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.speaking_style && p.speaking_style.description) || '')}"></label>
+                    <label>称呼你（逗号分隔） <input type="text" id="edit-semantic-call" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.call_user && p.call_user.join) ? p.call_user.join('、') : '')}" placeholder="${escapeHtml(ownerTitle)}"></label>
+                    <div class="flex gap-2 mt-2">
+                        <button type="button" id="memory-edit-save" class="px-3 py-1.5 bg-[#ff8fab] text-white rounded font-bold">保存</button>
+                        <button type="button" id="memory-edit-cancel" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded">取消</button>
+                    </div>
+                </div>
+            `;
+            modalBody.querySelector('#memory-edit-save').addEventListener('click', function () {
+                const identityVal = (document.getElementById('edit-semantic-identity') || {}).value || '';
+                const foodVal = (document.getElementById('edit-semantic-food') || {}).value || '';
+                const dislikesVal = (document.getElementById('edit-semantic-dislikes') || {}).value || '';
+                const abilitiesVal = (document.getElementById('edit-semantic-abilities') || {}).value || '';
+                const descVal = (document.getElementById('edit-semantic-desc') || {}).value || '';
+                const callVal = (document.getElementById('edit-semantic-call') || {}).value || '';
+                appState.memories.semanticProfile.identity = identityVal;
+                appState.memories.semanticProfile.preferences = appState.memories.semanticProfile.preferences || {};
+                appState.memories.semanticProfile.preferences.food = foodVal;
+                appState.memories.semanticProfile.preferences.dislikes = dislikesVal;
+                appState.memories.semanticProfile.preferences.abilities = abilitiesVal;
+                appState.memories.semanticProfile.speaking_style = appState.memories.semanticProfile.speaking_style || {};
+                appState.memories.semanticProfile.speaking_style.description = descVal;
+                appState.memories.semanticProfile.call_user = callVal ? callVal.split(/[、,]/).map((s) => s.trim()).filter(Boolean) : [ownerTitle];
+                modalTitle.textContent = '宠物记忆';
+                renderMemories();
+            });
+            modalBody.querySelector('#memory-edit-cancel').addEventListener('click', function () { modalTitle.textContent = '宠物记忆'; renderMemories(); });
+            return;
+        }
+        if (type === 'habit' && index >= 0 && appState.memories && appState.memories.habit && appState.memories.habit[index]) {
+            const h = appState.memories.habit[index];
+            modalTitle.textContent = '编辑记忆';
+            modalBody.innerHTML = `
+                <div class="flex flex-col gap-2 text-xs">
+                    <label>总结（宠物视角） <textarea id="edit-habit-summary" class="w-full border rounded px-2 py-1 h-24">${escapeHtml(h.summary || '')}</textarea></label>
+                    <label>生成时间 <input type="text" id="edit-habit-date" class="w-full border rounded px-2 py-1" value="${escapeHtml(h.generated_at || '')}" placeholder="YYYY-MM-DD"></label>
+                    <div class="flex gap-2 mt-2">
+                        <button type="button" id="memory-edit-save" class="px-3 py-1.5 bg-[#ff8fab] text-white rounded font-bold">保存</button>
+                        <button type="button" id="memory-edit-cancel" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded">取消</button>
+                    </div>
+                </div>
+            `;
+            modalBody.querySelector('#memory-edit-save').addEventListener('click', function () {
+                const summaryVal = (document.getElementById('edit-habit-summary') || {}).value || '';
+                const dateVal = (document.getElementById('edit-habit-date') || {}).value || '';
+                appState.memories.habit[index].summary = summaryVal;
+                appState.memories.habit[index].generated_at = dateVal || appState.memories.habit[index].generated_at;
+                modalTitle.textContent = '宠物记忆';
+                renderMemories();
+            });
+            modalBody.querySelector('#memory-edit-cancel').addEventListener('click', function () { modalTitle.textContent = '宠物记忆'; renderMemories(); });
+        }
+    }
+
+    function openMemoryModal() {
+        ensureMemorySeeds();
+        if (typeof decayMemoryStrength === 'function') decayMemoryStrength();
+        const placeholder = '<div></div>'; // 内容由 renderMemories 注入
+        openModal('宠物记忆', placeholder, 'default');
+        renderMemories();
+    }
+
+    /** 种子数据：仅在为空时写入，保证两 Tab 均有示例内容 */
+    function ensureMemorySeeds() {
+        if (!appState.memories) appState.memories = { episodic: [], semantic: [], semanticProfile: null, habit: [] };
+        const ownerTitle = getOwnerTitle();
+        if (!appState.memories.semanticProfile || !appState.memories.semanticProfile.identity) {
+            appState.memories.semanticProfile = {
+                identity: '我是一只皮卡丘，目标是成为旅行大师。',
+                preferences: {
+                    food: '我最爱的东西是番茄酱（Ketchup），看到都会眼睛发光。',
+                    dislikes: '我不太喜欢被关进精灵球（Poké Ball），那样会觉得好闷。',
+                    abilities: '我高兴的时候会忍不住放电，尾巴还能提前感到天气要变。'
+                },
+                speaking_style: {
+                    description: '我说话喜欢加「Pika～」，看到熟悉的人会叫「' + ownerTitle + '」。',
+                    verbal_tics: ['Pika～', 'Pika pika～'],
+                    call_user: [ownerTitle]
+                },
+                call_user: [ownerTitle],
+                tags: ['pikachu', 'travel_master', 'semantic_profile']
+            };
+        }
+        const episodic = appState.memories.episodic || [];
+        const hasTravel = episodic.some((m) => m.category === 'travel' || m.category === undefined);
+        if (!hasTravel) {
+            const personalityKey = appState.petPersonality || '小火苗';
+            appState.memories.episodic = [
+                {
+                    type: 'episodic',
+                    category: 'travel',
+                    date: '2026-2-28',
+                    location_city: '温馨小屋',
+                    location_spot: '打卡 温馨小屋',
+                    time_slot: 'afternoon',
+                    personality: personalityKey,
+                    summary: '初次见面！我已经收拾好行李，随时准备和你一起出发去看大千世界啦。',
+                    narration: '初次见面！我已经收拾好行李，随时准备和你一起出发去看大千世界啦。',
+                    text: '初次见面！我已经收拾好行李，随时准备和你一起出发去看大千世界啦。',
+                    habit_inference: '',
+                    emotion: 'excited',
+                    is_seed: true,
+                    strength: 0.9,
+                    importance: 0.8,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: [],
+                    source: 'checkin',
+                    nfc_source: null,
+                    time_window: 'current'
+                },
+                {
+                    type: 'episodic',
+                    category: 'travel',
+                    date: '2026-2-27',
+                    location: '杭州',
+                    location_city: '杭州',
+                    location_spot: '开往海边的高铁',
+                    time_slot: 'afternoon',
+                    personality: personalityKey,
+                    summary: '第一次跟你坐高铁去海边，我趴在窗边看云一块块被撕开，整趟路都不舍得眨眼。',
+                    narration: '第一次跟你坐高铁去海边，我趴在窗边看云一块块被撕开。你困得一直点头，我就偷偷把一点点电藏进耳机里，让歌声听起来暖一点，Pika～',
+                    text: '第一次跟你坐高铁去海边，我趴在窗边看云一块块被撕开。你困得一直点头，我就偷偷把一点点电藏进耳机里，让歌声听起来暖一点，Pika～',
+                    habit_inference: '我发现你在离开一座城市的时候，总会撑着不睡，所以我都会多看几眼窗外，把那一路都记下来。',
+                    emotion: 'tender',
+                    is_seed: true,
+                    strength: 0.9,
+                    importance: 0.7,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: ['高铁', '海边', '云'],
+                    source: 'checkin',
+                    nfc_source: null,
+                    time_window: 'week'
+                },
+                {
+                    type: 'episodic',
+                    category: 'daily',
+                    date: '2026-2-26',
+                    time_slot: 'morning',
+                    source_event: 'nfc_merchant',
+                    personality: personalityKey,
+                    summary: '在星巴克门口遇到了一只咖啡杯公仔，我们一起拍了照！',
+                    narration: '在星巴克门口遇到了一只咖啡杯公仔，我们一起拍了照！',
+                    text: '在星巴克门口遇到了一只咖啡杯公仔，我们一起拍了照！',
+                    habit_inference: '',
+                    emotion: 'curious',
+                    is_seed: true,
+                    strength: 0.9,
+                    importance: 0.6,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: ['星巴克', '咖啡'],
+                    source: 'nfc',
+                    nfc_source: '星巴克',
+                    time_window: 'week'
+                },
+                {
+                    type: 'episodic',
+                    category: 'daily',
+                    date: '2026-2-25',
+                    time_slot: 'afternoon',
+                    source_event: 'nfc_doll',
+                    personality: personalityKey,
+                    summary: '和 labubu 玩偶合了个影，它好可爱呀～',
+                    narration: '和 labubu 玩偶合了个影，它好可爱呀～',
+                    text: '和 labubu 玩偶合了个影，它好可爱呀～',
+                    habit_inference: '',
+                    emotion: 'excited',
+                    is_seed: true,
+                    strength: 0.9,
+                    importance: 0.7,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: ['labubu', '玩偶'],
+                    source: 'nfc',
+                    nfc_source: 'labubu',
+                    time_window: 'week'
+                }
+            ].concat(episodic);
+        }
+        const episodicNow = appState.memories.episodic || [];
+        const hasDaily = episodicNow.some((m) => m.category === 'daily');
+        if (!hasDaily) {
+            const personalityKeyForDaily = appState.petPersonality || '小火苗';
+            appState.memories.episodic = episodicNow.concat([
+                {
+                    type: 'episodic',
+                    category: 'daily',
+                    date: '2026-2-28',
+                    time_slot: 'evening',
+                    source_event: 'open_memory_page',
+                    personality: personalityKeyForDaily,
+                    summary: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。',
+                    narration: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。',
+                    text: '最近你总是在快睡不着的时候打开记忆本，我就躲在页面角落里，陪你把一页一页翻完再关灯。',
+                    habit_inference: '我好像也养成了一个习惯：只要深夜看到屏幕亮起，我就会先把最暖的那几段旅程翻到手边。',
+                    is_critical: true,
+                    strength: 0.9,
+                    importance: 0.6,
+                    last_recalled_at: null,
+                    recall_count: 0,
+                    key_facts: ['记忆本', '深夜'],
+                    source: 'interaction',
+                    nfc_source: null,
+                    time_window: 'current'
+                }
+            ]);
+        }
+        const habit = appState.memories.habit || [];
+        if (habit.length === 0) {
+            appState.memories.habit = [{ generated_at: '2026-2-28', summary: '这阵子你大多在 23:00–01:00 找我，我也习惯在那个时间把旅行记忆放到首页，方便你一进来就看到。', metrics: {}, tags: ['night', 'travel_focus'] }];
+        }
+    }
 
     function renderCabinetGrid() {
         if (!cabinetGrid) return;
+        cabinetGrid.className = 'cabinet-shelf flex flex-col gap-2 min-h-[240px]';
         const list = appState.cabinetItems || [];
+        const byTier = groupCabinetByTier(list);
+        const tierLabels = { S: 'S 级', A: 'A 级', B: 'B 级', C: 'C 级' };
+        const tierCols = { S: 2, A: 3, B: 3, C: 4 };
         let html = '';
-        for (let i = 0; i < CABINET_SLOTS; i++) {
-            const item = list[i];
-            if (item && (item.scene || item.location)) {
-                const scene = item.scene;
-                const label = scene ? scene.label : item.location;
-                const img = scene ? `<img src="${scene.image}" alt="${scene.label}" class="w-12 h-12 rounded-xl object-cover mb-1 border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
-                const fallback = scene ? `<span class="text-2xl mb-1 hidden">🧳</span>` : `<span class="text-2xl mb-1">🧳</span>`;
-                html += `<div class="cabinet-slot relative" data-cabinet-item="true">${img}${fallback}<span class="font-bold truncate max-w-[80px]">${escapeHtml(label)}</span></div>`;
-            } else {
-                html += cabinetPlaceholderHTML;
+        ['S', 'A', 'B', 'C'].forEach((tier) => {
+            const slots = CABINET_TIER_SLOTS[tier] || 4;
+            const group = byTier[tier] || [];
+            const tierClass = tier === 'S' ? 'bg-amber-400 text-amber-900' : tier === 'A' ? 'bg-purple-400 text-purple-900' : tier === 'B' ? 'bg-blue-300 text-blue-900' : 'bg-gray-300 text-gray-700';
+            const cols = tierCols[tier] || 4;
+            html += `<div><div class="text-[10px] font-bold text-[#5c4a3a] mb-1 flex items-center gap-1"><span class="px-1 py-0.5 rounded text-[9px] ${tierClass}">${tierLabels[tier]}</span></div><div class="grid gap-2" style="grid-template-columns: repeat(${cols}, 1fr);">`;
+            for (let i = 0; i < slots; i++) {
+                const { item, origIdx } = group[i] || {};
+                if (item && (item.scene || item.location)) {
+                    const scene = item.scene;
+                    const { short: shortLabel, full: fullLabel } = getShortLabel(item);
+                    const img = scene ? `<img src="${scene.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
+                    const fallback = scene ? `<span class="text-2xl hidden">🧳</span>` : `<span class="text-2xl">🧳</span>`;
+                    html += `<div class="cabinet-slot relative cursor-pointer" data-cabinet-item="true" data-item-index="${origIdx}"><span class="absolute top-0 right-0 text-[9px] font-bold px-1 py-0.5 rounded ${tierClass}">${tier}</span><div class="cabinet-slot__media">${img}${fallback}</div><span class="font-bold w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span></div>`;
+                } else {
+                    html += cabinetPlaceholderHTML;
+                }
             }
-        }
+            html += '</div></div>';
+        });
         cabinetGrid.innerHTML = html;
     }
 
@@ -2935,6 +4588,16 @@
         const div = document.createElement('div');
         div.textContent = s;
         return div.innerHTML;
+    }
+
+    /** 橱柜展示用：有 scene 用 scene.label；无 scene 时缩短 location（·前一段或前6字+省略号），完整名放 title */
+    function getShortLabel(item) {
+        const full = item.scene ? item.scene.label : (item.location || '');
+        if (item.scene) return { short: full, full };
+        if (!full) return { short: '', full: '' };
+        const idx = full.indexOf('·');
+        const short = idx >= 0 ? full.slice(0, idx).trim() : (full.length > 6 ? full.slice(0, 6) + '…' : full);
+        return { short, full };
     }
 
     function findCabinetItem(scene, location) {
@@ -2945,15 +4608,18 @@
         ) || null;
     }
 
-    function addCabinetItem(location, sceneOverride) {
+    function addCabinetItem(location, sceneOverride, tierOverride, sourceOverride) {
         if (!cabinetGrid) return;
         const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
         if (!scene) return;
         appState.cabinetItems = appState.cabinetItems || [];
         if (appState.cabinetItems.length >= CABINET_SLOTS) return;
 
-        appState.cabinetItems.unshift({ location, scene });
+        const tier = tierOverride || (scene && scene.tier) || 'C';
+        const source = sourceOverride || (scene && scene.source) || 'checkin';
+        appState.cabinetItems.unshift({ location, scene, tier, source });
         renderCabinetGrid();
+        renderMemoryWall(); // 同步更新墙面
     }
 
     // --- 辅助函数：地图页场景预览卡片 ---
@@ -2976,7 +4642,44 @@
         scenePreview.classList.remove('hidden');
     }
 
+    function initOwnerTitleControls() {
+        if (!ownerTitleConfig) return;
+        updateOwnerTitleDisplay();
+
+        const optionButtons = ownerTitleConfig.querySelectorAll('.owner-title-option');
+        optionButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const raw = btn.getAttribute('data-title') || '';
+                const title = sanitizeOwnerTitle(raw);
+                appState.ownerTitle = title;
+                updateOwnerTitleDisplay();
+                if (ownerTitleInput) {
+                    ownerTitleInput.value = '';
+                }
+            });
+        });
+
+        if (ownerTitleInput) {
+            ownerTitleInput.addEventListener('change', () => {
+                const title = sanitizeOwnerTitle(ownerTitleInput.value);
+                appState.ownerTitle = title;
+                updateOwnerTitleDisplay();
+            });
+        }
+
+        if (btnMemory) {
+            btnMemory.addEventListener('click', (event) => {
+                event.preventDefault();
+                openMemoryModal();
+            });
+        }
+    }
+
+    // 初始化入口
     renderCabinetGrid();
+    renderMemoryWall();
+    setupDiaryImageHandlers();
+    initOwnerTitleControls();
 </script>
 </body>
 </html>
