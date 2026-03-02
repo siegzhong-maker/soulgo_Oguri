@@ -35,7 +35,8 @@ export async function POST(request) {
     }
 
     // Prefer environment variable, then user input, then default (image-capable model)
-    const model = process.env.OPENROUTER_IMAGE_MODEL || userModel || 'google/gemini-2.5-flash-image-preview';
+    // Use google/gemini-2.5-flash-image; -preview suffix can 404 on OpenRouter
+    const model = process.env.OPENROUTER_IMAGE_MODEL || userModel || 'google/gemini-2.5-flash-image';
 
     const payload = {
         model,

@@ -14,7 +14,7 @@
 #### 后端 (Vercel Serverless Functions)
 新增一个 API 接口 `/api/generate-image`，专门处理生图请求。
 *   **输入**：`prompt`（描述词）、`model`（可选，默认配置在环境变量）。
-*   **处理**：构建 OpenRouter 请求，设置 `modalities: ["image", "text"]`（多模态模型如 Gemini），并调用支持生图的模型（默认 `google/gemini-2.5-flash-image-preview`）。
+*   **处理**：构建 OpenRouter 请求，设置 `modalities: ["image", "text"]`（多模态模型如 Gemini），并调用支持生图的模型（默认 `google/gemini-2.5-flash-image`）。
 *   **输出**：返回图片的 URL（通常是 Base64 或临时链接）。
 
 #### 前端 (index.html)
@@ -35,7 +35,7 @@
 
 ### 第一阶段：后端开发
 1.  创建 `api/generate-image.js`。
-2.  配置环境变量 `OPENROUTER_IMAGE_MODEL`（可选；默认已使用 `google/gemini-2.5-flash-image-preview`）。
+2.  配置环境变量 `OPENROUTER_IMAGE_MODEL`（可选；默认已使用 `google/gemini-2.5-flash-image`）。
 3.  实现对 OpenRouter 的调用逻辑，处理 Base64 图片返回。
 
 ### 第二阶段：前端开发
@@ -62,7 +62,7 @@
 ```json
 {
   "prompt": "A cute Pikachu standing in front of the Eiffel Tower, sunny day, travel photography style",
-  "model": "google/gemini-2.5-flash-image-preview" // Optional，默认见 OPENROUTER_IMAGE_MODEL
+  "model": "google/gemini-2.5-flash-image" // Optional，默认见 OPENROUTER_IMAGE_MODEL
 }
 ```
 
@@ -75,5 +75,5 @@
 
 ## 5. 依赖与环境变量
 *   需要确认 `OPENROUTER_API_KEY` 是否有权限调用生图模型（与日记接口共用同一 Key 即可）。
-*   **生图专用环境变量（可选）**：`OPENROUTER_IMAGE_MODEL`。不配置时默认使用 `google/gemini-2.5-flash-image-preview`（OpenRouter 支持的 Gemini 2.5 Flash Image）。可在 Vercel 或 `.env.local` 中覆盖。
+*   **生图专用环境变量（可选）**：`OPENROUTER_IMAGE_MODEL`。不配置时默认使用 `google/gemini-2.5-flash-image`（OpenRouter 支持的 Gemini 2.5 Flash Image）。可在 Vercel 或 `.env.local` 中覆盖。
 *   OpenRouter 的生图模型通常按次计费或 token 计费，需注意成本。

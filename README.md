@@ -31,7 +31,7 @@
    - 名称：`OPENROUTER_API_KEY`  
    - 值：你的 OpenRouter API Key  
    - 环境：Production / Preview 按需勾选
-   - （可选）生图功能：`OPENROUTER_IMAGE_MODEL`，不填则默认使用 `google/gemini-2.5-flash-image-preview`。
+   - （可选）生图功能：`OPENROUTER_IMAGE_MODEL`，不填则默认使用 `google/gemini-2.5-flash-image`。
 3. 保存后重新部署（或触发一次新部署）。
 4. 部署完成后访问 `https://你的项目.vercel.app`，打开 `prototype.html`（或配置为首页）即可使用；日记生成请求会由 Vercel Serverless 函数 `/api/chat` 代理并注入 Key，Key 不会暴露到前端。
 
