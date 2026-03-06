@@ -47,7 +47,8 @@ export async function POST(request) {
         messages: [
             {
                 role: 'user',
-                content: finalPrompt
+                // Use array format for better Gemini compatibility (per OpenRouter docs)
+                content: [{ type: 'text', text: finalPrompt }]
             }
         ],
         // OpenRouter: use ["image", "text"] for multimodal models (e.g. Gemini)
@@ -76,47 +77,66 @@ export async function POST(request) {
         const data = await res.json();
         
         // Extract image from response
-        // OpenRouter image generation typically returns images in message.images array (Base64)
-        // or sometimes as a URL in content depending on the model.
-        // We will try to find it in both places.
-        
+        // OpenRouter/Gemini can return images in multiple formats:
+        // 1. message.images[] with imageUrl.url or image_url.url (Base64 data URL)
+        // 2. message.content as array of parts: { type: "image_url", image_url: { url } }
+        // 3. message.content as string with markdown image or plain URL
         let imageUrl = null;
         const message = data.choices && data.choices[0] && data.choices[0].message;
 
         if (message) {
-            // Check for images array (Base64 or URL object)
+            // 1. Check for images array (Base64 or URL object)
             if (message.images && message.images.length > 0) {
-                // Some models return { url: "..." } or { b64_json: "..." } inside images array
-                // The search result example showed: image.image_url.url
-                // Let's handle a few common structures safely
                 const firstImage = message.images[0];
                 if (typeof firstImage === 'string') {
                     imageUrl = firstImage;
                 } else if (firstImage.url) {
                     imageUrl = firstImage.url;
+                } else if (firstImage.imageUrl && firstImage.imageUrl.url) {
+                    imageUrl = firstImage.imageUrl.url;  // camelCase (OpenRouter docs)
                 } else if (firstImage.image_url && firstImage.image_url.url) {
                     imageUrl = firstImage.image_url.url;
                 } else if (firstImage.b64_json) {
                     imageUrl = `data:image/png;base64,${firstImage.b64_json}`;
                 }
-            } 
+            }
             
-            // If not found in images array, check content for markdown image syntax or plain URL
-            if (!imageUrl && message.content) {
+            // 2. Check content as array of parts (OpenAI-style multimodal)
+            if (!imageUrl && Array.isArray(message.content)) {
+                for (const part of message.content) {
+                    if (part.type === 'image_url' && part.image_url && part.image_url.url) {
+                        imageUrl = part.image_url.url;
+                        break;
+                    }
+                    if (part.type === 'image' && (part.image_url || part.url)) {
+                        imageUrl = (part.image_url && part.image_url.url) || part.url;
+                        break;
+                    }
+                }
+            }
+            
+            // 3. Check content as string (markdown image or plain URL)
+            if (!imageUrl && typeof message.content === 'string') {
                 const content = message.content;
-                // Regex for markdown image: ![alt](url)
                 const mdMatch = content.match(/!\[.*?\]\((.*?)\)/);
                 if (mdMatch && mdMatch[1]) {
                     imageUrl = mdMatch[1];
-                } else if (content.startsWith('http')) {
+                } else if (content.startsWith('http') || content.startsWith('data:')) {
                     imageUrl = content.trim();
                 }
             }
         }
 
         if (!imageUrl) {
+            // Log structure for debugging (avoid exposing full raw_response to client)
+            console.error('[generate-image] Unparseable response structure:', JSON.stringify({
+                hasChoices: !!(data.choices && data.choices.length),
+                messageKeys: message ? Object.keys(message) : null,
+                hasImages: message?.images?.length,
+                contentType: message?.content ? (Array.isArray(message.content) ? 'array' : typeof message.content) : null
+            }));
             return new Response(
-                JSON.stringify({ error: 'no_image_generated', message: 'Model did not return a recognizable image.', raw_response: data }),
+                JSON.stringify({ error: 'no_image_generated', message: 'Model did not return a recognizable image.' }),
                 { status: 500, headers: { 'Content-Type': 'application/json' } }
             );
         }
