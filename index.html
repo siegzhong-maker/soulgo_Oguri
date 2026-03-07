@@ -931,24 +931,44 @@
                         <i class="ph-fill ph-book-open text-sm"></i>
                     </button>
                 </header>
-                <!-- P1-5: 减法 UI，状态与心情合并为一行，更紧凑 -->
-                <div id="pet-status-bar" class="mt-0.5 text-center text-xs font-bold text-gray-600">
-                    比卡丘在准备出发～
+                <!-- 状态与心情合并为一行，更紧凑 -->
+                <div class="mt-0.5 w-full flex flex-row flex-wrap items-center justify-between gap-2 min-w-0">
+                    <div id="pet-status-bar" class="text-xs font-bold text-gray-600 truncate min-w-0 flex-1">
+                        比卡丘在准备出发～
+                    </div>
+                    <div id="pet-mood-health-panel" class="text-[10px] font-bold text-gray-600 flex items-center gap-1.5 flex-shrink-0">
+                        <span data-mood class="inline-flex items-center gap-0.5"><span data-mood-emoji class="text-base">😐</span><span data-mood-text class="opacity-90">一般</span></span>
+                        <span class="opacity-50">·</span>
+                        <span data-health class="inline-flex items-center gap-0.5"><span data-health-emoji class="text-base">💚</span><span data-health-text class="opacity-90">良好</span></span>
+                    </div>
                 </div>
-                <!-- P2: 心情图标优先，图标为主、文字为辅 -->
-                <div id="pet-mood-health-panel" class="text-[10px] font-bold text-gray-600 mt-0 text-center flex items-center justify-center gap-1.5">
-                    <span data-mood class="inline-flex items-center gap-0.5"><span data-mood-emoji class="text-base">😐</span><span data-mood-text class="opacity-90">一般</span></span>
-                    <span class="opacity-50">·</span>
-                    <span data-health class="inline-flex items-center gap-0.5"><span data-health-emoji class="text-base">💚</span><span data-health-text class="opacity-90">良好</span></span>
-                </div>
-                <!-- 顶部信息区：人格 + 盲盒 + 可收起的称呼设置（默认折叠） -->
+                <!-- 顶部信息区：操作行（三个按钮横排）+ 性格/盲盒展开内容 + 称呼设置 -->
                 <div class="mt-0.5 flex flex-col items-center gap-0.5 w-full">
-                    <!-- 性格与盲盒：默认折叠，点击展开 -->
-                    <div id="personality-blindbox-section" class="personality-blindbox-section collapsed w-full flex flex-col items-center">
+                    <!-- 操作行：展开性格与盲盒、展开称呼设置、让 AI 帮它想想～ 横排 -->
+                    <div class="petroom-actions-row w-full flex flex-row flex-wrap items-center justify-center gap-2 bg-white/80 rounded-2xl px-3 py-2 border border-gray-100">
                         <button type="button" id="personality-blindbox-toggle" class="inline-flex items-center gap-1 text-[10px] text-[#8d7f73] px-2 py-1 rounded-full bg-white/80 border border-gray-200 hover:bg-white transition-colors" aria-expanded="false" aria-label="展开性格与盲盒">
                             <span id="personality-blindbox-toggle-text">展开性格与盲盒</span>
                             <i class="ph-bold ph-caret-down text-[10px] caret"></i>
                         </button>
+                        <button
+                            id="pet-info-panel-toggle"
+                            type="button"
+                            class="inline-flex items-center gap-1 text-[10px] text-[#ff8fab] px-2 py-0.5 rounded-full bg-white/80 border border-[#ffcad4]"
+                        >
+                            <span id="pet-info-toggle-text">展开称呼设置</span>
+                            <i class="ph-bold ph-caret-down text-[10px]"></i>
+                        </button>
+                        <button
+                            id="btn-pet-decide-once"
+                            type="button"
+                            class="inline-flex items-center gap-1 text-[10px] text-gray-600 px-2 py-0.5 rounded-full bg-white/80 border border-gray-200"
+                            title="触发一次行为决策：会优先请求大模型（需配置 /api/pet/decide），否则按当前人格规则决定"
+                        >
+                            <i class="ph-fill ph-hand-pointing"></i> <span id="btn-pet-decide-label">让 AI 帮它想想～</span>
+                        </button>
+                    </div>
+                    <!-- 性格与盲盒展开内容（默认折叠） -->
+                    <div id="personality-blindbox-section" class="personality-blindbox-section collapsed w-full flex flex-col items-center">
                         <div class="personality-blindbox-content w-full flex flex-col items-center">
                             <div id="personality-display" class="hidden">
                                 <div class="personality-icon" id="p-icon">✨</div>
@@ -966,26 +986,8 @@
                         </div>
                     </div>
 
-                    <div class="mt-1 flex flex-col items-center gap-1 w-full">
-                        <button
-                            id="pet-info-panel-toggle"
-                            type="button"
-                            class="inline-flex items-center gap-1 text-[10px] text-[#ff8fab] px-2 py-0.5 rounded-full bg-white/80 border border-[#ffcad4]"
-                        >
-                            <span id="pet-info-toggle-text">展开称呼设置</span>
-                            <i class="ph-bold ph-caret-down text-[10px]"></i>
-                        </button>
-                        <button
-                            id="btn-pet-decide-once"
-                            type="button"
-                            class="inline-flex items-center gap-1 text-[10px] text-gray-600 px-2 py-0.5 rounded-full bg-white/80 border border-gray-200 mt-0.5"
-                            title="触发一次行为决策：会优先请求大模型（需配置 /api/pet/decide），否则按当前人格规则决定"
-                        >
-                            <i class="ph-fill ph-hand-pointing"></i> <span id="btn-pet-decide-label">让 AI 帮它想想～</span>
-                        </button>
-                        <!-- 上拉操作区：向上滑动或点击进入“仅操作区”模式 -->
-                        <div id="pet-info-drag-area"></div>
-                    </div>
+                    <!-- 上拉操作区：向上滑动或点击进入“仅操作区”模式 -->
+                    <div id="pet-info-drag-area" class="w-full"></div>
 
                     <!-- 宠物对你的称呼配置区（可收起） -->
                     <div id="owner-title-config" class="mt-1 text-[11px] text-gray-600 flex flex-col items-center gap-1">
