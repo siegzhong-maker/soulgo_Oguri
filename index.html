@@ -672,11 +672,20 @@
         }
 
         /* 能量传递按钮区域 */
-        #energy-fingerprint-area {
+        #petroom-bottom-stack {
             position: absolute;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
             left: 50%;
             transform: translateX(-50%);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            z-index: 40;
+            pointer-events: none;
+        }
+        #energy-fingerprint-area {
+            position: relative;
             transform-origin: center center;
             width: 72px;
             height: 72px;
@@ -695,6 +704,7 @@
             touch-action: manipulation;
             -webkit-touch-callout: none;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+            pointer-events: auto;
         }
         #energy-fingerprint-area:active, #energy-fingerprint-area.active {
             /* 保持位置不动，只做高亮效果 */
@@ -754,8 +764,9 @@
             .cabinet-modal .cabinet-slot__media {
                 height: 52px;
             }
-            #energy-fingerprint-area {
+            #petroom-bottom-stack {
                 bottom: calc(env(safe-area-inset-bottom, 0px) + 56px);
+                gap: 4px;
             }
         }
         
@@ -1338,22 +1349,22 @@
              <!-- 旧版操作栏已隐藏，改用全新的交互布局 -->
         </div>
 
-        <!-- 能量指纹区：位于屏幕底部中央 -->
-        <div id="energy-fingerprint-area" class="pointer-events-auto" aria-label="长按传递能量">
-             <i class="ph-fill ph-fingerprint" id="energy-fingerprint-icon"></i>
+        <!-- 能量指纹 + 引导文案：统一底部栈布局 -->
+        <div id="petroom-bottom-stack">
+            <div id="energy-fingerprint-area" aria-label="长按传递能量">
+                 <i class="ph-fill ph-fingerprint" id="energy-fingerprint-icon"></i>
+            </div>
+            <p class="petroom-bottom-hint text-center text-gray-600">
+                <span class="inline-flex items-center justify-center gap-1">
+                    <i class="ph-fill ph-info text-[11px]"></i>
+                    <span class="text-[10px] font-medium">长按底部指纹，可以把今天的能量传给我。</span>
+                </span>
+                <span class="block mt-0.5 text-[9px] text-gray-500">一段时间不操作时，我会自己想想接下来要做什么～</span>
+            </p>
         </div>
-        
+
         <!-- 能量粒子层 -->
         <div id="energy-particles"></div>
-
-        <p class="petroom-bottom-hint absolute z-10 text-center text-gray-600 pointer-events-none">
-            <span class="inline-flex items-center justify-center gap-1">
-                <i class="ph-fill ph-info text-[11px]"></i>
-                <span class="text-[10px] font-medium">长按底部指纹，可以把今天的能量传给我。</span>
-            </span>
-            <br>
-            <span class="text-[9px] text-gray-500">一段时间不操作时，我会自己想想接下来要做什么～</span>
-        </p>
 
         <!-- 隐藏容器：承载旅行橱柜与旅行日记内容，正常视图中不展示 -->
         <div id="petroom-hidden-containers" class="hidden">
@@ -3889,7 +3900,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         ['S', 'A', 'B', 'C'].forEach((tier) => {
             const slots = CABINET_TIER_SLOTS[tier] || 4;
             const group = byTier[tier] || [];
-            const tc = TIER_CONFIG[tier] || TIRE_CONFIG.C;
+            const tc = TIER_CONFIG[tier] || TIER_CONFIG.C;
             const tierClass = tc.class;
             const filledCount = group.length;
             const maxPlaceholders = Math.min(2, Math.max(0, slots - filledCount));
@@ -6009,7 +6020,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
     function renderMemories() {
         if (!modalBody) return;
 
-        // 创建或获取记忆主页外层壳：顶部三段 Tab（旅行足迹 / 日记 / 橱柜）
+        // 创建或获取记忆主页外层壳：顶部主 Tab（仅旅行足迹）
         let shell = document.getElementById('memory-main-shell');
         if (!shell) {
             const shellHTML = `
@@ -6017,14 +6028,10 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     <div class="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
                         <div class="flex gap-3">
                             <button type="button" id="memory-main-tab-travel" class="memory-main-tab text-sm font-bold pb-1 border-b-2 transition-colors text-teal-700 border-teal-600">旅行足迹</button>
-                            <button type="button" id="memory-main-tab-diary" class="memory-main-tab text-sm font-bold pb-1 border-b-2 transition-colors text-gray-400 border-transparent">日记</button>
-                            <button type="button" id="memory-main-tab-cabinet" class="memory-main-tab text-sm font-bold pb-1 border-b-2 transition-colors text-gray-400 border-transparent">橱柜</button>
                         </div>
                         <span id="memory-main-counter" class="text-[10px] text-gray-400"></span>
                     </div>
                     <div id="memory-main-tab-travel-panel" class="overflow-y-auto flex-1 min-h-0"></div>
-                    <div id="memory-main-tab-diary-panel" class="overflow-y-auto flex-1 min-h-0 hidden"></div>
-                    <div id="memory-main-tab-cabinet-panel" class="overflow-y-auto flex-1 min-h-0 hidden"></div>
                 </div>
             `;
             modalBody.innerHTML = shellHTML;
@@ -6032,12 +6039,8 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         }
 
         const travelPanel = document.getElementById('memory-main-tab-travel-panel');
-        const diaryPanel = document.getElementById('memory-main-tab-diary-panel');
-        const cabinetPanel = document.getElementById('memory-main-tab-cabinet-panel');
         const mainCounter = document.getElementById('memory-main-counter');
         const mainTabTravel = document.getElementById('memory-main-tab-travel');
-        const mainTabDiary = document.getElementById('memory-main-tab-diary');
-        const mainTabCabinet = document.getElementById('memory-main-tab-cabinet');
 
         const travelList = getEpisodicTravel();
         const dailyList = getEpisodicDaily();
@@ -6198,111 +6201,16 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             });
         }
 
-        // 填充「日记」 Tab：复用宠物房中的日记列表 DOM
-        if (diaryPanel) {
-            const episodicAll = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
-            const diaryEntries = episodicAll.filter((m) => m.category === 'travel' && m.diaryId);
-
-            if (diaryEntries.length === 0) {
-                diaryPanel.innerHTML = `
-                    <div class="flex flex-col items-center justify-center text-center text-xs text-gray-500 py-6 gap-2">
-                        <div class="text-2xl mb-1">📖</div>
-                        <p>还没有旅行日记呢，先带我去地图打一次卡吧～</p>
-                        <button type="button" class="mt-1 px-3 py-1.5 rounded-full bg-[#ff8fab] text-white text-[11px] font-bold shadow-sm hover:bg-[#ff7b9c] active:scale-95 transition" id="memory-diary-goto-map">
-                            去地图打卡
-                        </button>
-                    </div>
-                `;
-            } else if (diaryList) {
-                diaryPanel.innerHTML = `
-                    <div class="flex flex-col gap-3 text-xs">
-                        <div class="text-[11px] text-gray-500">最新打卡会出现在最上方</div>
-                        <div class="flex flex-col gap-3">
-                            ${diaryList.innerHTML}
-                        </div>
-                    </div>
-                `;
-            }
-
-            const gotoMapBtn = document.getElementById('memory-diary-goto-map');
-            if (gotoMapBtn) {
-                gotoMapBtn.addEventListener('click', () => {
-                    closeModal();
-                    showMap();
-                });
-            }
-        }
-
-        // 填充「橱柜」 Tab：展示旅行纪念品，并与照片墙建立文案桥梁
-        if (cabinetPanel) {
-            const countCabinet = (appState.cabinetItems || []).length;
-            if (!cabinetGrid || countCabinet === 0) {
-                cabinetPanel.innerHTML = `
-                    <div class="flex flex-col items-center justify-center text-center text-xs text-gray-500 py-6 gap-2">
-                        <div class="text-2xl mb-1">🎁</div>
-                        <p>橱柜里还空空的，多带我出去走走，就会慢慢装满啦～</p>
-                    </div>
-                `;
-            } else {
-                cabinetPanel.innerHTML = `
-                    <div class="flex flex-col gap-2 text-xs">
-                        <p class="text-[11px] text-gray-500">从橱柜里挑一件，小屋墙上就会多一张照片～</p>
-                        <div class="grid grid-cols-4 grid-rows-3 gap-2">
-                            ${cabinetGrid.innerHTML}
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        // 主 Tab 状态与计数显示
+        // 主 Tab 状态与计数显示（仅旅行足迹）
         const applyMainTabState = () => {
-            if (!travelPanel || !diaryPanel || !cabinetPanel) return;
-
-            travelPanel.classList.toggle('hidden', currentMemoryMainTab !== 'travel');
-            diaryPanel.classList.toggle('hidden', currentMemoryMainTab !== 'diary');
-            cabinetPanel.classList.toggle('hidden', currentMemoryMainTab !== 'cabinet');
-
-            const setMainTabClass = (btn, active) => {
-                if (!btn) return;
-                btn.className = 'memory-main-tab text-sm font-bold pb-1 border-b-2 transition-colors ' +
-                    (active ? 'text-teal-700 border-teal-600' : 'text-gray-400 border-transparent');
-            };
-
-            setMainTabClass(mainTabTravel, currentMemoryMainTab === 'travel');
-            setMainTabClass(mainTabDiary, currentMemoryMainTab === 'diary');
-            setMainTabClass(mainTabCabinet, currentMemoryMainTab === 'cabinet');
-
             if (mainCounter) {
-                if (currentMemoryMainTab === 'travel') {
-                    const countForTravel = travelList.length + dailyList.length;
-                    mainCounter.textContent = countForTravel ? `旅行记忆 ${countForTravel} 条` : '还没有旅行记忆';
-                } else if (currentMemoryMainTab === 'diary') {
-                    const episodicAll = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
-                    const diaryEntries = episodicAll.filter((m) => m.category === 'travel' && m.diaryId);
-                    mainCounter.textContent = diaryEntries.length ? `日记 ${diaryEntries.length} 篇` : '还没有旅行日记';
-                } else if (currentMemoryMainTab === 'cabinet') {
-                    const c = (appState.cabinetItems || []).length;
-                    mainCounter.textContent = c ? `旅行纪念品 ${c} 件` : '还没有旅行纪念品';
-                }
+                const countForTravel = travelList.length + dailyList.length;
+                mainCounter.textContent = countForTravel ? `旅行记忆 ${countForTravel} 条` : '还没有旅行记忆';
             }
         };
 
         if (mainTabTravel) {
             mainTabTravel.addEventListener('click', () => {
-                currentMemoryMainTab = 'travel';
-                applyMainTabState();
-            });
-        }
-        if (mainTabDiary) {
-            mainTabDiary.addEventListener('click', () => {
-                currentMemoryMainTab = 'diary';
-                applyMainTabState();
-            });
-        }
-        if (mainTabCabinet) {
-            mainTabCabinet.addEventListener('click', () => {
-                currentMemoryMainTab = 'cabinet';
                 applyMainTabState();
             });
         }
