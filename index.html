@@ -1033,9 +1033,9 @@
 
         <!-- 房间区域：铺满剩余空间，底图由 view-petroom 背景提供 -->
         <div id="room-viewport" class="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center touch-none room-viewport-entrance z-0">
+            <!-- 森林背景层：固定在 viewport 内铺满，不受房间缩放影响，手机端可完整覆盖 -->
+            <div id="room-scene-forest-bg" class="absolute inset-0 -z-10 pointer-events-none bg-cover bg-center bg-no-repeat" style="background-image: url('assets/enchanted-forest-path.jpg');"></div>
             <div id="room-scene" class="absolute top-0 left-0 h-full w-auto flex justify-center items-center" style="transform-origin: 0 0;">
-                <!-- 森林背景层：与房间一起 transform，拖拽时同步移动 -->
-                <div id="room-scene-forest-bg" class="absolute -left-[50vw] -top-[50vw] w-[200vw] min-w-[200vw] h-[200vh] min-h-[200vh] -z-10 pointer-events-none bg-cover bg-center bg-no-repeat" style="background-image: url('assets/enchanted-forest-path.jpg');"></div>
                 <!-- 房间背景图：高度自适应，宽度允许超出 -->
                 <img id="room-scene-bg" src="场景/场景.png" alt="房间背景" class="h-full w-auto max-w-none block select-none pointer-events-none object-cover">
                 <!-- P1 生态舱视窗：可替换的窗外层，根据最近打卡地切换（需在 ROOM_WINDOW_BY_LOCATION 配置） -->
