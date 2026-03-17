@@ -1342,7 +1342,7 @@
                 <h2 id="modal-title" class="text-sm font-bold text-gray-800"></h2>
                 <button id="modal-close" class="text-gray-400 hover:text-gray-600 text-xl leading-none" data-modal-close aria-label="关闭">&times;</button>
             </div>
-            <div id="modal-body" class="flex-1 overflow-y-auto no-scrollbar space-y-3 text-xs"></div>
+            <div id="modal-body" class="relative flex-1 overflow-y-auto no-scrollbar space-y-3 text-xs min-h-0"></div>
         </div>
     </div>
     <!-- BGM 播放器：循环播放，由音乐盒选择列表控制 -->
@@ -6287,21 +6287,18 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
 
     let currentMemoryMainTab = 'travel'; // 'travel' | 'diary' | 'cabinet'
     let currentMemoryTab = 'travel'; // 内部子 Tab：'travel' | 'character'
+    let memoryChartExpanded = false;   // 记忆增长图默认折叠
+    let memoryHabitsExpanded = true;  // 小习惯：≥3 条旅行记忆时默认折叠
+    let memoryHistoryExpanded = false; // 历史记忆默认展示 5 条，点击查看更多展开
 
     function renderMemories() {
         if (!modalBody) return;
 
-        // 创建或获取记忆主页外层壳：顶部主 Tab（仅旅行足迹）
+        // 创建或获取记忆主页外层壳：直接以旅行记忆/性格碎片为顶层 Tab
         let shell = document.getElementById('memory-main-shell');
         if (!shell) {
             const shellHTML = `
                 <div id="memory-main-shell" class="flex flex-col gap-0 text-xs memory-modal-content h-full">
-                    <div class="flex items-center justify-between border-b border-gray-200 pb-2 mb-2">
-                        <div class="flex gap-3">
-                            <button type="button" id="memory-main-tab-travel" class="memory-main-tab text-sm font-bold pb-1 border-b-2 transition-colors text-teal-700 border-teal-600">旅行足迹</button>
-                        </div>
-                        <span id="memory-main-counter" class="text-[10px] text-gray-400"></span>
-                    </div>
                     <div id="memory-main-tab-travel-panel" class="overflow-y-auto flex-1 min-h-0"></div>
                 </div>
             `;
@@ -6310,8 +6307,6 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         }
 
         const travelPanel = document.getElementById('memory-main-tab-travel-panel');
-        const mainCounter = document.getElementById('memory-main-counter');
-        const mainTabTravel = document.getElementById('memory-main-tab-travel');
 
         const travelList = getEpisodicTravel();
         const dailyList = getEpisodicDaily();
@@ -6334,13 +6329,12 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             </div>
         `;
 
-        // 记忆概览条：旅行 / 日常 / 小习惯 / 互动
+        // 记忆概览条：精简为累计旅行 + 最近信息，当前 Tab 相关 1–2 个 pill
         const travelTotal = (stats.episodicTotals && stats.episodicTotals.travelTotal) || travelList.length;
         const dailyTotal = (stats.episodicTotals && stats.episodicTotals.dailyTotal) || dailyList.length;
         const habitTotal = habits.length;
         const recentInteractionTotal = stats.interactionStats ? stats.interactionStats.totalInteractions : 0;
 
-        // 顶部概览条：累计旅行次数 + 最近一次旅行信息
         const latestTravel = travelList.length > 0 ? travelList[0] : null;
         let latestLabel = '';
         if (latestTravel) {
@@ -6350,18 +6344,17 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                 latestLabel = '最近：' + [d, loc].filter(Boolean).join(' · ');
             }
         }
+        const episodicTotal = travelTotal + dailyTotal;
+        const overviewPills = currentMemoryTab === 'travel'
+            ? (episodicTotal > 0 ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100 text-[10px]">旅行 ${travelTotal} · 日常 ${dailyTotal}</span>` : '')
+            : (habitTotal + recentInteractionTotal > 0 ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px]">小习惯 ${habitTotal} · 互动 ${recentInteractionTotal}</span>` : '');
         const overviewHTML = `
             <div class="mb-2">
-                <div class="flex items-center justify-between mb-1 text-[11px]">
+                <div class="flex items-center justify-between gap-2 text-[11px]">
                     <span class="font-semibold text-gray-700">${travelTotal ? `累计旅行 ${travelTotal} 次` : '还没有旅行记忆'}</span>
-                    ${latestLabel ? `<span class="text-[10px] text-gray-400">${escapeHtml(latestLabel)}</span>` : ''}
+                    ${latestLabel ? `<span class="text-[10px] text-gray-400 shrink-0">${escapeHtml(latestLabel)}</span>` : ''}
                 </div>
-                <div class="flex flex-wrap gap-1.5 text-[10px]">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100">旅行记忆：${travelTotal}</span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-100">日常记忆：${dailyTotal}</span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">小习惯：${habitTotal}</span>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100">记录互动：${recentInteractionTotal}</span>
-                </div>
+                ${overviewPills ? '<div class="mt-1">' + overviewPills + '</div>' : ''}
             </div>
         `;
 
@@ -6406,6 +6399,8 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                 const iF = getInteractionFrequency();
                 if (iF > 0) freqLine = `<span class="text-[10px] text-gray-500">近 7 天互动 ${iF} 次</span>`;
             }
+            const emotionLabelMap = { excited: '兴奋', tender: '温柔', nostalgic: '怀旧', calm: '平静', curious: '好奇' };
+            const emotionLabel = emotionLabelMap[emotion] || emotion;
             let emotionClass = 'bg-amber-100 text-amber-800';
             if (emotion === 'tender') emotionClass = 'bg-pink-100 text-pink-800';
             else if (emotion === 'nostalgic') emotionClass = 'bg-purple-100 text-purple-800';
@@ -6421,7 +6416,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     <div class="font-bold text-gray-800 text-sm mb-1">${escapeHtml(title)}${isDaily ? ' <span class="text-[10px] font-normal text-gray-500 rounded bg-gray-100 px-1">日常</span>' : ''} <span class="text-[10px] font-normal text-teal-600 rounded bg-teal-50 px-1">${escapeHtml(sourceLabel)}</span>${freqLine ? ' ' + freqLine : ''}</div>
                     <div class="text-xs text-gray-700 leading-relaxed">${escapeHtml(summary)}</div>
                     ${habitInf ? '<div class="text-[11px] text-gray-500 mt-1">' + escapeHtml(habitInf) + '</div>' : ''}
-                    ${emotion ? '<span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ' + emotionClass + '">' + escapeHtml(emotion) + '</span>' : ''}
+                    ${emotion ? '<span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ' + emotionClass + '">' + escapeHtml(emotionLabel) + '</span>' : ''}
                 </div>
             `;
         }
@@ -6467,11 +6462,20 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
 
         const currentItems = currentTravel.concat(currentDaily);
         const historyItems = historyTravel.concat(historyDaily);
+        const HISTORY_INITIAL_SHOW = 5;
+        const historyItemsToShow = (!memoryHistoryExpanded && historyItems.length > HISTORY_INITIAL_SHOW)
+            ? historyItems.slice(0, HISTORY_INITIAL_SHOW)
+            : historyItems;
+        const historyHasMore = historyItems.length > HISTORY_INITIAL_SHOW;
+        const historyRemaining = historyItems.length - HISTORY_INITIAL_SHOW;
 
         const currentSection = currentItems.length > 0 ? buildTimelineSection('当前记忆', currentItems) : '';
-        const historySection = historyItems.length > 0 ? buildTimelineSection('历史记忆（本周/本月/本年）', historyItems) : '';
+        const historySection = historyItems.length > 0 ? buildTimelineSection('历史记忆（本周/本月/本年）', historyItemsToShow) : '';
+        const historyMoreBtnHTML = (currentMemoryTab === 'travel' && historyHasMore && !memoryHistoryExpanded)
+            ? '<button type="button" id="memory-history-expand-more" class="mt-1 mb-2 text-[11px] text-teal-600 hover:text-teal-700 font-medium">查看更多（还剩 ' + historyRemaining + ' 条）</button>'
+            : '';
         const travelCardsHTML = currentMemoryTab === 'travel' && (travelCardsWithIndex.length > 0 || dailyCardsWithIndex.length > 0)
-            ? '<div class="flex flex-col gap-0">' + currentSection + historySection + '</div>'
+            ? '<div class="flex flex-col gap-0">' + currentSection + historySection + historyMoreBtnHTML + '</div>'
             : '';
         const travelEmptyHTML = (currentMemoryTab === 'travel' && travelCardsWithIndex.length === 0 && dailyCardsWithIndex.length === 0)
             ? '<div class="flex flex-col items-center justify-center text-center text-xs text-gray-500 py-4 gap-2"><p>我还没有记下这类呢，先带我去地图打一次卡吧～</p><button type="button" class="mt-1 px-3 py-1.5 rounded-full bg-[#ff8fab] text-white text-[11px] font-bold shadow-sm hover:bg-[#ff7b9c] active:scale-95 transition" id="memory-travel-goto-map">去地图打卡</button></div>'
@@ -6487,30 +6491,43 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                 })
                 .slice(0, 8)
             : [];
+        const episodicCountForHabits = travelList.length + dailyList.length;
+        const habitsCollapsible = episodicCountForHabits >= 3;
+        const habitsContentHTML = recentHabits.map((h) => {
+            const isInteraction = h.type === 'interaction';
+            const label = isInteraction ? (h.summary || '') : ('经常… ' + (h.summary || ''));
+            const dateStr = (h.timestamp || h.generated_at) ? (function () { const d = new Date(h.timestamp || h.generated_at); return d.toLocaleDateString ? d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : (h.timestamp || h.generated_at || '').slice(0, 10); }()) : '';
+            return '<div class="memory-card bg-teal-50/60 rounded-lg p-2.5 border border-teal-100 text-left"><span class="text-[10px] text-teal-600 mr-1">' + (isInteraction ? '·' : '') + '</span><span class="text-xs text-gray-700">' + escapeHtml(label) + '</span>' + (dateStr ? '<div class="text-[10px] text-gray-400 mt-1">' + escapeHtml(dateStr) + '</div>' : '') + '</div>';
+        }).join('');
         const recentHabitsSectionHTML = (currentMemoryTab === 'travel' && recentHabits.length > 0)
-            ? '<div class="mb-3"><div class="flex items-center justify-between text-[11px] font-semibold text-gray-500 mb-1"><div class="flex items-center gap-1"><i class="ph-fill ph-footprints text-amber-500 text-xs"></i><span>最近的小习惯</span></div><span class="text-[10px] text-gray-400">累计 ' + habitTotal + ' 条</span></div><div class="flex flex-col gap-2">'
-                + recentHabits.map((h) => {
-                    const isInteraction = h.type === 'interaction';
-                    const label = isInteraction ? (h.summary || '') : ('经常… ' + (h.summary || ''));
-                    const dateStr = (h.timestamp || h.generated_at) ? (function () { const d = new Date(h.timestamp || h.generated_at); return d.toLocaleDateString ? d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : (h.timestamp || h.generated_at || '').slice(0, 10); }()) : '';
-                    return '<div class="memory-card bg-teal-50/60 rounded-lg p-2.5 border border-teal-100 text-left"><span class="text-[10px] text-teal-600 mr-1">' + (isInteraction ? '·' : '') + '</span><span class="text-xs text-gray-700">' + escapeHtml(label) + '</span>' + (dateStr ? '<div class="text-[10px] text-gray-400 mt-1">' + escapeHtml(dateStr) + '</div>' : '') + '</div>';
-                }).join('') + '</div></div>'
+            ? (habitsCollapsible
+                ? '<div class="mb-3 memory-collapsible-section" data-section="habits">' +
+                    '<button type="button" class="memory-collapse-toggle w-full flex items-center justify-between text-left py-1 rounded hover:bg-gray-50">' +
+                    '<div class="flex items-center gap-1 text-[11px] font-semibold text-gray-500"><i class="ph-fill ph-footprints text-amber-500 text-xs"></i><span>最近的小习惯</span></div>' +
+                    '<span class="text-[10px] text-teal-600">' + (memoryHabitsExpanded ? '收起' : '展开') + '</span></button>' +
+                    (memoryHabitsExpanded ? '<div class="flex flex-col gap-2 mt-1">' + habitsContentHTML + '</div>' : '') +
+                    '</div>'
+                : '<div class="mb-3"><div class="flex items-center justify-between text-[11px] font-semibold text-gray-500 mb-1"><div class="flex items-center gap-1"><i class="ph-fill ph-footprints text-amber-500 text-xs"></i><span>最近的小习惯</span></div><span class="text-[10px] text-gray-400">累计 ' + habitTotal + ' 条</span></div><div class="flex flex-col gap-2">' + habitsContentHTML + '</div></div>')
             : '';
 
-        // 旅行记忆增长小图：最近若干天每天新增数量的条形图
+        // 旅行记忆增长小图：默认折叠，点击展开
         const episodicTimeline = (stats.episodicTimeline && stats.episodicTimeline.length) ? stats.episodicTimeline : [];
         const maxDailyTotal = episodicTimeline.reduce((max, d) => Math.max(max, d.total || 0), 0) || 1;
+        const chartContentHTML = episodicTimeline.map((d) => {
+            const total = d.total || 0;
+            const heightPct = Math.max(8, Math.round((total / maxDailyTotal) * 100));
+            const label = (d.date || '').slice(5);
+            return '<div class="flex-1 flex flex-col items-center justify-end gap-0.5">' +
+                '<div class="w-2.5 rounded-t-full bg-teal-300" style="height:' + heightPct + '%" title="' + escapeHtml((d.date || '') + '：' + total + ' 条记忆') + '"></div>' +
+                '<div class="text-[9px] text-gray-400">' + escapeHtml(label) + '</div></div>';
+        }).join('');
         const episodicChartHTML = (currentMemoryTab === 'travel' && episodicTimeline.length > 0)
-            ? '<div class="mb-3"><div class="text-[11px] font-semibold text-gray-500 mb-1">最近的记忆增长</div><div class="flex items-end gap-1 h-16 px-1 bg-gray-50 rounded-lg border border-gray-100">'
-                + episodicTimeline.map((d) => {
-                    const total = d.total || 0;
-                    const heightPct = Math.max(8, Math.round((total / maxDailyTotal) * 100));
-                    const label = (d.date || '').slice(5); // MM-DD
-                    return '<div class="flex-1 flex flex-col items-center justify-end gap-0.5">' +
-                        '<div class="w-2.5 rounded-t-full bg-teal-300" style="height:' + heightPct + '%" title="' + escapeHtml((d.date || '') + '：' + total + ' 条记忆') + '"></div>' +
-                        '<div class="text-[9px] text-gray-400">' + escapeHtml(label) + '</div>' +
-                        '</div>';
-                }).join('') + '</div></div>'
+            ? '<div class="mb-3 memory-collapsible-section" data-section="chart">' +
+                '<button type="button" class="memory-collapse-toggle w-full flex items-center justify-between text-left text-[11px] font-semibold text-gray-500 py-1 rounded hover:bg-gray-50">' +
+                '<span>最近的记忆增长</span>' +
+                '<span class="text-[10px] text-teal-600">' + (memoryChartExpanded ? '收起' : '展开') + '</span></button>' +
+                (memoryChartExpanded ? '<div class="flex items-end gap-1 h-16 px-1 bg-gray-50 rounded-lg border border-gray-100 mt-1">' + chartContentHTML + '</div>' : '') +
+                '</div>'
             : '';
 
         const identityBlock = (profile && (profile.identity || (profile.preferences && Object.keys(profile.preferences).length > 0))) ? `
@@ -6606,6 +6623,15 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
         if (tabTravel) tabTravel.addEventListener('click', function () { currentMemoryTab = 'travel'; renderMemories(); });
         if (tabCharacter) tabCharacter.addEventListener('click', function () { currentMemoryTab = 'character'; renderMemories(); });
 
+        travelPanel?.querySelectorAll('.memory-collapse-toggle').forEach((btn) => {
+            btn.addEventListener('click', function () {
+                const section = btn.closest('.memory-collapsible-section')?.getAttribute('data-section');
+                if (section === 'chart') { memoryChartExpanded = !memoryChartExpanded; }
+                else if (section === 'habits') { memoryHabitsExpanded = !memoryHabitsExpanded; }
+                renderMemories();
+            });
+        });
+
         const editButtonsRoot = travelPanel || modalBody;
         editButtonsRoot.querySelectorAll('.memory-edit-btn').forEach((btn) => {
             const card = btn.closest('[data-memory-type]');
@@ -6628,44 +6654,47 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
             });
         }
 
-        // 主 Tab 状态与计数显示（仅旅行足迹）
-        const applyMainTabState = () => {
-            if (mainCounter) {
-                const countForTravel = travelList.length + dailyList.length;
-                mainCounter.textContent = countForTravel ? `旅行记忆 ${countForTravel} 条` : '还没有旅行记忆';
-            }
-        };
-
-        if (mainTabTravel) {
-            mainTabTravel.addEventListener('click', () => {
-                applyMainTabState();
+        // 历史记忆「查看更多」
+        const historyExpandBtn = document.getElementById('memory-history-expand-more');
+        if (historyExpandBtn) {
+            historyExpandBtn.addEventListener('click', () => {
+                memoryHistoryExpanded = true;
+                renderMemories();
             });
         }
+    }
 
-        applyMainTabState();
+    function closeMemoryEditOverlay() {
+        const overlay = document.getElementById('memory-edit-overlay');
+        if (overlay) overlay.remove();
+        if (modalTitle) modalTitle.textContent = '宠物记忆';
+        if (typeof renderMemories === 'function') renderMemories();
     }
 
     function openMemoryEditForm(type, index) {
         if (!modalTitle || !modalBody) return;
         const ownerTitle = getOwnerTitle();
+        let formHTML = '';
+        let onSave = null;
+        let onCancel = closeMemoryEditOverlay;
+
         if (type === 'episodic' && index >= 0 && appState.memories && appState.memories.episodic && appState.memories.episodic[index]) {
             const m = appState.memories.episodic[index];
             const title = m.location_spot || m.location_city || m.location || (m.source_event || '');
-            modalTitle.textContent = '编辑记忆';
-            modalBody.innerHTML = `
+            formHTML = `
                 <div class="flex flex-col gap-2 text-xs">
                     <label>标题/地点 <input type="text" id="edit-episodic-title" class="w-full border rounded px-2 py-1" value="${escapeHtml(title)}" placeholder="如：打卡 温馨小屋"></label>
                     <label>日期 <input type="text" id="edit-episodic-date" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.date || '')}" placeholder="YYYY-MM-DD"></label>
                     <label>记忆摘要（第一人称，1 句为主） <textarea id="edit-episodic-narration" class="w-full border rounded px-2 py-1 h-20" placeholder="我…">${escapeHtml(m.summary || m.narration || m.text || '')}</textarea></label>
                     <label>习惯推断（可选） <textarea id="edit-episodic-habit" class="w-full border rounded px-2 py-1 h-16" placeholder="我发现你…">${escapeHtml(m.habit_inference || '')}</textarea></label>
-                    <label>情绪（可选） <input type="text" id="edit-episodic-emotion" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.emotion || '')}" placeholder="excited / tender / nostalgic / calm / curious"></label>
+                    <label>情绪（可选） <input type="text" id="edit-episodic-emotion" class="w-full border rounded px-2 py-1" value="${escapeHtml(m.emotion || '')}" placeholder="兴奋 / 温柔 / 怀旧 / 平静 / 好奇"></label>
                     <div class="flex gap-2 mt-2">
                         <button type="button" id="memory-edit-save" class="px-3 py-1.5 bg-[#ff8fab] text-white rounded font-bold">保存</button>
                         <button type="button" id="memory-edit-cancel" class="px-3 py-1.5 bg-gray-200 text-gray-700 rounded">取消</button>
                     </div>
                 </div>
             `;
-            modalBody.querySelector('#memory-edit-save').addEventListener('click', function () {
+            onSave = function () {
                 const titleVal = (document.getElementById('edit-episodic-title') || {}).value || '';
                 const dateVal = (document.getElementById('edit-episodic-date') || {}).value || '';
                 const narrVal = (document.getElementById('edit-episodic-narration') || {}).value || '';
@@ -6686,16 +6715,12 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                 rec.text = narrVal;
                 rec.habit_inference = habitVal;
                 rec.emotion = emotionVal || undefined;
-                modalTitle.textContent = '宠物记忆';
-                renderMemories();
-            });
-            modalBody.querySelector('#memory-edit-cancel').addEventListener('click', function () { modalTitle.textContent = '宠物记忆'; renderMemories(); });
-            return;
-        }
-        if (type === 'semanticProfile' && appState.memories && appState.memories.semanticProfile) {
+                saveState();
+                closeMemoryEditOverlay();
+            };
+        } else if (type === 'semanticProfile' && appState.memories && appState.memories.semanticProfile) {
             const p = appState.memories.semanticProfile;
-            modalTitle.textContent = '编辑记忆';
-            modalBody.innerHTML = `
+            formHTML = `
                 <div class="flex flex-col gap-2 text-xs">
                     <label>身份（我…） <textarea id="edit-semantic-identity" class="w-full border rounded px-2 py-1 h-16">${escapeHtml(p.identity || '')}</textarea></label>
                     <label>喜好（食物等） <input type="text" id="edit-semantic-food" class="w-full border rounded px-2 py-1" value="${escapeHtml((p.preferences && p.preferences.food) || '')}"></label>
@@ -6709,7 +6734,7 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     </div>
                 </div>
             `;
-            modalBody.querySelector('#memory-edit-save').addEventListener('click', function () {
+            onSave = function () {
                 const identityVal = (document.getElementById('edit-semantic-identity') || {}).value || '';
                 const foodVal = (document.getElementById('edit-semantic-food') || {}).value || '';
                 const dislikesVal = (document.getElementById('edit-semantic-dislikes') || {}).value || '';
@@ -6724,16 +6749,12 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                 appState.memories.semanticProfile.speaking_style = appState.memories.semanticProfile.speaking_style || {};
                 appState.memories.semanticProfile.speaking_style.description = descVal;
                 appState.memories.semanticProfile.call_user = callVal ? callVal.split(/[、,]/).map((s) => s.trim()).filter(Boolean) : [ownerTitle];
-                modalTitle.textContent = '宠物记忆';
-                renderMemories();
-            });
-            modalBody.querySelector('#memory-edit-cancel').addEventListener('click', function () { modalTitle.textContent = '宠物记忆'; renderMemories(); });
-            return;
-        }
-        if (type === 'habit' && index >= 0 && appState.memories && appState.memories.habit && appState.memories.habit[index]) {
+                saveState();
+                closeMemoryEditOverlay();
+            };
+        } else if (type === 'habit' && index >= 0 && appState.memories && appState.memories.habit && appState.memories.habit[index]) {
             const h = appState.memories.habit[index];
-            modalTitle.textContent = '编辑记忆';
-            modalBody.innerHTML = `
+            formHTML = `
                 <div class="flex flex-col gap-2 text-xs">
                     <label>总结（宠物视角） <textarea id="edit-habit-summary" class="w-full border rounded px-2 py-1 h-24">${escapeHtml(h.summary || '')}</textarea></label>
                     <label>生成时间 <input type="text" id="edit-habit-date" class="w-full border rounded px-2 py-1" value="${escapeHtml(h.generated_at || '')}" placeholder="YYYY-MM-DD"></label>
@@ -6743,21 +6764,39 @@ summary 30～50 字，第一人称，描述宠物在该地的具体表现或感�
                     </div>
                 </div>
             `;
-            modalBody.querySelector('#memory-edit-save').addEventListener('click', function () {
+            onSave = function () {
                 const summaryVal = (document.getElementById('edit-habit-summary') || {}).value || '';
                 const dateVal = (document.getElementById('edit-habit-date') || {}).value || '';
                 appState.memories.habit[index].summary = summaryVal;
                 appState.memories.habit[index].generated_at = dateVal || appState.memories.habit[index].generated_at;
-                modalTitle.textContent = '宠物记忆';
-                renderMemories();
-            });
-            modalBody.querySelector('#memory-edit-cancel').addEventListener('click', function () { modalTitle.textContent = '宠物记忆'; renderMemories(); });
+                saveState();
+                closeMemoryEditOverlay();
+            };
         }
+
+        if (!formHTML) return;
+
+        document.getElementById('memory-edit-overlay')?.remove();
+        modalTitle.textContent = '编辑记忆';
+        const overlay = document.createElement('div');
+        overlay.id = 'memory-edit-overlay';
+        overlay.className = 'absolute inset-0 z-10 bg-white/95 overflow-y-auto p-2 flex flex-col';
+        overlay.innerHTML = formHTML;
+        modalBody.appendChild(overlay);
+
+        const saveBtn = overlay.querySelector('#memory-edit-save');
+        const cancelBtn = overlay.querySelector('#memory-edit-cancel');
+        if (saveBtn && onSave) saveBtn.addEventListener('click', onSave);
+        if (cancelBtn && onCancel) cancelBtn.addEventListener('click', onCancel);
     }
 
     function openMemoryModal() {
         ensureMemorySeeds();
         if (typeof decayMemoryStrength === 'function') decayMemoryStrength();
+        memoryChartExpanded = false;
+        memoryHistoryExpanded = false;
+        const episodicCount = (getEpisodicTravel().length + getEpisodicDaily().length);
+        memoryHabitsExpanded = episodicCount < 3;
         const placeholder = '<div></div>'; // 内容由 renderMemories 注入（会创建记忆主页壳）
         openModal('宠物记忆', placeholder, 'default');
         renderMemories();
