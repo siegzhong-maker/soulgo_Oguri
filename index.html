@@ -31,6 +31,8 @@
             width: min(360px, 90vw);
             padding: 22px 22px 18px;
             border-radius: 28px;
+            /* 兜底：当背景图加载失败时也不透明 */
+            background-color: var(--ui-paper);
             background: url('assets/UI/UI界面2-0.png') center / 100% 100% no-repeat;
             box-shadow: 0 18px 42px var(--ui-shadow);
             transform-origin: center;
@@ -114,6 +116,8 @@
             position: absolute;
             inset: 0;
             border-radius: 12px;
+            /* 兜底：按钮贴图加载失败时仍有底色 */
+            background-color: rgba(255, 255, 255, 0.92);
             background: var(--btn-bg) center / 100% 100% no-repeat;
             box-shadow: 0 10px 16px rgba(120, 90, 60, 0.12);
         }
