@@ -5,7 +5,8 @@
   "type": "module",
   "description": "SoulGo travel diary AIGC + RAG (minimal runnable: embed-and-store, retrieve)",
   "scripts": {
-    "local": "vercel dev"
+    "local": "vercel dev",
+    "verify:rabbit-assets": "node scripts/verify-rabbit-assets.mjs"
   },
   "devDependencies": {
     "vercel": "^39.0.0"
