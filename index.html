@@ -2051,6 +2051,193 @@
     /** 避免 saveState 裁剪 data URL 后触发 renderDiaryListFromState 时重入 */
     let saveStateDiaryRerenderLock = false;
 
+    const DIARY_IMG_IDB_NAME = 'soulgo_diary_images';
+    const DIARY_IMG_IDB_STORE = 'blobs';
+    const DIARY_IMG_REF_PREFIX = 'idb:v1:';
+    const DIARY_IMG_PLACEHOLDER_PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+    function isDiaryImageIdbRef(s) {
+        return typeof s === 'string' && s.startsWith(DIARY_IMG_REF_PREFIX);
+    }
+
+    function diaryIdbStorageKey(diaryId, index) {
+        return String(diaryId) + ':' + String(index);
+    }
+
+    function openDiaryImagesIdb() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DIARY_IMG_IDB_NAME, 1);
+            req.onerror = () => reject(req.error);
+            req.onsuccess = () => resolve(req.result);
+            req.onupgradeneeded = (ev) => {
+                const db = ev.target.result;
+                if (!db.objectStoreNames.contains(DIARY_IMG_IDB_STORE)) {
+                    db.createObjectStore(DIARY_IMG_IDB_STORE);
+                }
+            };
+        });
+    }
+
+    async function idbPutDiaryBlob(diaryId, index, jpegDataUrl) {
+        const db = await openDiaryImagesIdb();
+        const blob = await (await fetch(jpegDataUrl)).blob();
+        const key = diaryIdbStorageKey(diaryId, index);
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(DIARY_IMG_IDB_STORE, 'readwrite');
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.objectStore(DIARY_IMG_IDB_STORE).put(blob, key);
+        });
+        db.close();
+        return DIARY_IMG_REF_PREFIX + key;
+    }
+
+    async function idbGetDiaryBlobUrl(ref) {
+        if (!isDiaryImageIdbRef(ref)) return ref;
+        const key = ref.slice(DIARY_IMG_REF_PREFIX.length);
+        const db = await openDiaryImagesIdb();
+        const blob = await new Promise((resolve, reject) => {
+            const tx = db.transaction(DIARY_IMG_IDB_STORE, 'readonly');
+            const q = tx.objectStore(DIARY_IMG_IDB_STORE).get(key);
+            q.onsuccess = () => resolve(q.result || null);
+            q.onerror = () => reject(q.error);
+        });
+        db.close();
+        if (!blob) return '';
+        return URL.createObjectURL(blob);
+    }
+
+    async function idbRefToDataUrl(ref) {
+        if (!isDiaryImageIdbRef(ref)) return ref;
+        const blobUrl = await idbGetDiaryBlobUrl(ref);
+        if (!blobUrl) return '';
+        try {
+            const r = await fetch(blobUrl);
+            const b = await r.blob();
+            URL.revokeObjectURL(blobUrl);
+            return await new Promise((resolve, reject) => {
+                const fr = new FileReader();
+                fr.onload = () => resolve(fr.result);
+                fr.onerror = () => reject(fr.error);
+                fr.readAsDataURL(b);
+            });
+        } catch {
+            try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+            return '';
+        }
+    }
+
+    /** 日记持久化：将 data URL 压成 JPEG，减小体积（含已小于边长阈值的 PNG） */
+    function compressDiaryImageDataUrl(dataUrl, maxLongEdge, quality) {
+        maxLongEdge = maxLongEdge || 1200;
+        quality = typeof quality === 'number' ? quality : 0.8;
+        return new Promise((resolve) => {
+            if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) {
+                resolve(dataUrl);
+                return;
+            }
+            const img = new Image();
+            img.onload = () => {
+                const w = img.naturalWidth;
+                const h = img.naturalHeight;
+                if (!w || !h) {
+                    resolve(dataUrl);
+                    return;
+                }
+                const maxDim = Math.max(w, h);
+                const scale = maxDim > maxLongEdge ? maxLongEdge / maxDim : 1;
+                const nw = Math.round(w * scale);
+                const nh = Math.round(h * scale);
+                const canvas = document.createElement('canvas');
+                canvas.width = nw;
+                canvas.height = nh;
+                const ctx = canvas.getContext('2d');
+                try {
+                    ctx.drawImage(img, 0, 0, nw, nh);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                } catch {
+                    resolve(dataUrl);
+                }
+            };
+            img.onerror = () => resolve(dataUrl);
+            img.src = dataUrl;
+        });
+    }
+
+    function collectLargestDiaryDataUrlVictim() {
+        let best = null;
+        const imgs = appState.diaryImages;
+        if (!imgs || typeof imgs !== 'object') return null;
+        for (const diaryId of Object.keys(imgs)) {
+            const arr = imgs[diaryId];
+            if (!Array.isArray(arr)) continue;
+            const hasIdb = arr.some((u) => isDiaryImageIdbRef(u));
+            if (hasIdb) continue;
+            arr.forEach((url, idx) => {
+                if (typeof url === 'string' && url.startsWith('data:')) {
+                    const len = url.length;
+                    if (!best || len > best.len) best = { diaryId, idx, len };
+                }
+            });
+        }
+        return best;
+    }
+
+    function removeDiaryImageAt(diaryId, idx) {
+        const arr = appState.diaryImages[diaryId];
+        if (!Array.isArray(arr) || idx < 0 || idx >= arr.length) return false;
+        arr.splice(idx, 1);
+        if (appState.diaryImageMeta && appState.diaryImageMeta[diaryId]) {
+            delete appState.diaryImageMeta[diaryId];
+        }
+        if (appState.diaryImageComments && appState.diaryImageComments[diaryId]) {
+            delete appState.diaryImageComments[diaryId];
+        }
+        return true;
+    }
+
+    function trimOldestDiaryImagesBlock() {
+        const episodic = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
+        const ids = episodic
+            .filter((m) => m && m.category === 'travel' && m.diaryId)
+            .map((m) => String(m.diaryId));
+        const sorted = [...new Set(ids)].sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));
+        for (const diaryId of sorted) {
+            if (appState.diaryImages && appState.diaryImages[diaryId] && appState.diaryImages[diaryId].length) {
+                appState.diaryImages[diaryId] = [];
+                if (appState.diaryImageMeta && appState.diaryImageMeta[diaryId]) {
+                    delete appState.diaryImageMeta[diaryId];
+                }
+                if (appState.diaryImageComments && appState.diaryImageComments[diaryId]) {
+                    delete appState.diaryImageComments[diaryId];
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    async function hydrateDiaryImagesInRoot(root) {
+        if (!root) return;
+        const imgs = root.querySelectorAll('img[data-diary-img-ref]');
+        for (const img of imgs) {
+            const enc = img.getAttribute('data-diary-img-ref');
+            if (!enc) continue;
+            let ref = '';
+            try {
+                ref = decodeURIComponent(enc);
+            } catch {
+                continue;
+            }
+            if (!isDiaryImageIdbRef(ref)) continue;
+            const blobUrl = await idbGetDiaryBlobUrl(ref);
+            if (blobUrl) {
+                img.src = blobUrl;
+                img.removeAttribute('data-diary-img-ref');
+            }
+        }
+    }
+
     /** 将图片 URL 下载到本地（支持 data URL 与 http(s)） */
     function downloadImageToLocal(imageUrl, suggestedName) {
         if (!imageUrl) return;
@@ -2080,37 +2267,48 @@
         try {
             localStorage.setItem(APP_STATE_KEY, JSON.stringify(appState));
         } catch (e) {
-            if (e && e.name === 'QuotaExceededError' && appState.diaryImages) {
-                // Strip data URLs from diary images to free space, then retry once
-                let trimmed = false;
-                for (const id of Object.keys(appState.diaryImages)) {
-                    const arr = appState.diaryImages[id];
-                    if (Array.isArray(arr)) {
-                        const before = arr.length;
-                        appState.diaryImages[id] = arr.filter((url) => typeof url !== 'string' || !url.startsWith('data:'));
-                        if (appState.diaryImages[id].length < before) trimmed = true;
+            if (e && e.name === 'QuotaExceededError') {
+                console.warn('[saveState] QuotaExceededError, gradual diary trim…');
+                let guard = 0;
+                while (guard < 500) {
+                    guard += 1;
+                    const victim = collectLargestDiaryDataUrlVictim();
+                    let did = false;
+                    if (victim) {
+                        removeDiaryImageAt(victim.diaryId, victim.idx);
+                        did = true;
+                        console.warn('[saveState] Removed largest legacy data URL diary image:', victim.diaryId);
+                    } else if (trimOldestDiaryImagesBlock()) {
+                        did = true;
+                        console.warn('[saveState] Cleared oldest diary image block (refs or mixed) to free quota.');
                     }
-                }
-                if (trimmed) {
+                    if (!did) break;
                     try {
                         localStorage.setItem(APP_STATE_KEY, JSON.stringify(appState));
                         if (!saveStateDiaryRerenderLock && typeof renderDiaryListFromState === 'function') {
                             saveStateDiaryRerenderLock = true;
-                            try {
-                                renderDiaryListFromState();
-                            } catch (re) {
-                                console.warn('renderDiaryListFromState after image trim failed:', re);
-                            } finally {
-                                saveStateDiaryRerenderLock = false;
-                            }
+                            void (async () => {
+                                try {
+                                    await renderDiaryListFromState();
+                                } catch (re) {
+                                    console.warn('renderDiaryListFromState after image trim failed:', re);
+                                } finally {
+                                    saveStateDiaryRerenderLock = false;
+                                }
+                            })();
                         }
                         return;
                     } catch (e2) {
-                        console.error('Failed to save state after trim:', e2);
+                        if (!e2 || e2.name !== 'QuotaExceededError') {
+                            console.error('Failed to save state:', e2);
+                            return;
+                        }
                     }
                 }
+                console.error('[saveState] Still over quota after gradual trim; other state may be too large.');
+            } else {
+                console.error('Failed to save state:', e);
             }
-            console.error('Failed to save state:', e);
         }
     }
 
@@ -5029,11 +5227,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
     }
 
-    function openDiaryModal() {
+    async function openDiaryModal() {
         if (!diaryList) return;
         if (typeof renderDiaryListFromState === 'function') {
             try {
-                renderDiaryListFromState();
+                await renderDiaryListFromState();
             } catch (e) {
                 console.warn('renderDiaryListFromState before openDiaryModal failed:', e);
             }
@@ -6390,17 +6588,31 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         );
     }
 
+    function diaryImageSrcHtmlAttrs(imageSrc) {
+        const s = String(imageSrc || '');
+        if (isDiaryImageIdbRef(s)) {
+            return (
+                ' src="' +
+                DIARY_IMG_PLACEHOLDER_PIXEL.replace(/"/g, '&quot;') +
+                '" data-diary-img-ref="' +
+                encodeURIComponent(s) +
+                '"'
+            );
+        }
+        return ' src="' + s.replace(/"/g, '&quot;') + '"';
+    }
+
     function buildAigcBlockWithSoulHTML(diaryId, location, imageSrc, opts) {
         opts = opts || {};
         const includeSoul = opts.includeSoulComment !== false;
         const safeLoc = escapeHtml(String(location || ''));
-        const safeSrc = String(imageSrc).replace(/"/g, '&quot;');
+        const srcAttrs = diaryImageSrcHtmlAttrs(imageSrc);
         const id = escapeHtml(String(diaryId));
         if (!includeSoul) {
             return (
                 '<div class="flex flex-col gap-2 w-full">' +
                 '<div class="relative group">' +
-                '<img src="' + safeSrc + '" alt="日记配图" class="w-full max-h-[min(52vh,320px)] object-cover animate-[fadeIn_0.5s_ease-out]">' +
+                '<img' + srcAttrs + ' alt="日记配图" class="w-full max-h-[min(52vh,320px)] object-cover animate-[fadeIn_0.5s_ease-out]">' +
                 '<button type="button" class="js-export-diary-image absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[11px] hover:bg-black/80 transition-colors flex items-center gap-1" ' +
                 'data-diary-id="' + id + '" data-location="' + safeLoc + '" title="导出到本地">' +
                 '<i class="ph-fill ph-download-simple"></i><span>导出图片</span></button></div>' +
@@ -6412,7 +6624,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             '<div class="flex flex-col gap-2 w-full">' +
             '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch w-full min-w-0">' +
             '<div class="relative group aspect-square w-full overflow-hidden rounded-xl border border-white shadow-sm">' +
-            '<img src="' + safeSrc + '" alt="日记配图" class="w-full h-full object-cover animate-[fadeIn_0.5s_ease-out]">' +
+            '<img' + srcAttrs + ' alt="日记配图" class="w-full h-full object-cover animate-[fadeIn_0.5s_ease-out]">' +
             '<button type="button" class="js-export-diary-image absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[11px] hover:bg-black/80 transition-colors flex items-center gap-1" ' +
             'data-diary-id="' + id + '" data-location="' + safeLoc + '" title="导出到本地">' +
             '<i class="ph-fill ph-download-simple"></i><span>导出图片</span></button></div>' +
@@ -6430,7 +6642,12 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const imgWrap = document.createElement('div');
         imgWrap.className = 'relative group aspect-square w-full overflow-hidden rounded-xl border border-white shadow-sm';
         const img = document.createElement('img');
-        img.src = src;
+        if (isDiaryImageIdbRef(src)) {
+            img.src = DIARY_IMG_PLACEHOLDER_PIXEL;
+            img.setAttribute('data-diary-img-ref', encodeURIComponent(String(src)));
+        } else {
+            img.src = src;
+        }
         img.alt = '日记插图';
         img.className = 'w-full h-full object-cover';
         imgWrap.appendChild(img);
@@ -6512,6 +6729,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         let src = urls[idx];
         if (!src) {
             src = resolveDiaryImageSrcFromDom(id, idx);
+        }
+        if (isDiaryImageIdbRef(src)) {
+            src = await idbRefToDataUrl(src);
         }
         if (!src) {
             updateSoulCommentAfterRequest(id, idx, 'error', '找不到这张图了，再插一次试试～');
@@ -6629,32 +6849,48 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             if (!file || !diaryId) return;
 
             const reader = new FileReader();
-            reader.onload = (e) => {
-                const src = e.target.result;
-                if (!src) return;
+            reader.onload = async (e) => {
+                try {
+                    const raw = e.target.result;
+                    if (!raw) return;
 
-                if (!appState.diaryImages) appState.diaryImages = {};
-                if (!appState.diaryImages[diaryId]) appState.diaryImages[diaryId] = [];
-                appState.diaryImages[diaryId].push(src);
-                const idx = appState.diaryImages[diaryId].length - 1;
-                const loc = getDiaryLocationForDiaryImage(diaryId);
+                    const compressed = await compressDiaryImageDataUrl(raw);
+                    if (!appState.diaryImages) appState.diaryImages = {};
+                    if (!appState.diaryImages[diaryId]) appState.diaryImages[diaryId] = [];
+                    const idx = appState.diaryImages[diaryId].length;
+                    let storageVal = compressed;
+                    let displaySrc = compressed;
+                    try {
+                        storageVal = await idbPutDiaryBlob(diaryId, idx, compressed);
+                        displaySrc = await idbGetDiaryBlobUrl(storageVal);
+                    } catch (err) {
+                        console.warn('[Diary image] IndexedDB failed, using compressed data URL:', err);
+                    }
 
-                if (idx === 0) {
-                    ensureDiaryImageMeta(diaryId)[0] = 'user';
-                    const html = buildAigcBlockWithSoulHTML(diaryId, loc, src, { includeSoulComment: true });
-                    document.querySelectorAll('.diary-aigc-image[data-diary-id="' + diaryId + '"]').forEach((el) => {
-                        el.classList.remove('hidden');
-                        el.innerHTML = html;
-                    });
-                    syncAllSoulCommentBlocksForSlot(diaryId, 0);
-                } else {
-                    const containers = document.querySelectorAll('[data-diary-id="' + diaryId + '"] .diary-images');
-                    containers.forEach((container) => {
-                        container.appendChild(createDiaryImageSlotElement(diaryId, idx, src));
-                    });
-                    syncAllSoulCommentBlocksForSlot(diaryId, idx);
+                    appState.diaryImages[diaryId].push(storageVal);
+                    const slot = appState.diaryImages[diaryId].length - 1;
+                    const loc = getDiaryLocationForDiaryImage(diaryId);
+                    const domSrc = isDiaryImageIdbRef(storageVal) ? displaySrc : storageVal;
+
+                    if (slot === 0) {
+                        ensureDiaryImageMeta(diaryId)[0] = 'user';
+                        const html = buildAigcBlockWithSoulHTML(diaryId, loc, domSrc, { includeSoulComment: true });
+                        document.querySelectorAll('.diary-aigc-image[data-diary-id="' + diaryId + '"]').forEach((el) => {
+                            el.classList.remove('hidden');
+                            el.innerHTML = html;
+                        });
+                        syncAllSoulCommentBlocksForSlot(diaryId, 0);
+                    } else {
+                        const containers = document.querySelectorAll('[data-diary-id="' + diaryId + '"] .diary-images');
+                        containers.forEach((container) => {
+                            container.appendChild(createDiaryImageSlotElement(diaryId, slot, domSrc));
+                        });
+                        syncAllSoulCommentBlocksForSlot(diaryId, slot);
+                    }
+                    saveState();
+                } catch (err) {
+                    console.error('[Diary image] upload failed:', err);
                 }
-                saveState();
             };
             reader.readAsDataURL(file);
 
@@ -7276,14 +7512,31 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             const data = await res.json();
             if (!data.image_url) throw new Error('No image url returned');
 
-            const successHTML = buildAigcBlockWithSoulHTML(diaryId, location, data.image_url, { includeSoulComment: false });
-            applyToAll(successHTML);
+            let displayUrl = data.image_url;
+            let storageVal = data.image_url;
 
             if (!appState.diaryImages) appState.diaryImages = {};
             if (!appState.diaryImages[idEsc]) appState.diaryImages[idEsc] = [];
-            if (!appState.diaryImages[idEsc].includes(data.image_url)) {
+
+            if (typeof data.image_url === 'string' && data.image_url.startsWith('data:')) {
+                const compressed = await compressDiaryImageDataUrl(data.image_url);
+                const slotForIdb = appState.diaryImages[idEsc].length;
+                try {
+                    storageVal = await idbPutDiaryBlob(idEsc, slotForIdb, compressed);
+                    displayUrl = await idbGetDiaryBlobUrl(storageVal);
+                } catch (idbErr) {
+                    console.warn('[AIGC Image] IndexedDB store failed, using compressed data URL:', idbErr);
+                    storageVal = compressed;
+                    displayUrl = compressed;
+                }
+            }
+
+            const successHTML = buildAigcBlockWithSoulHTML(diaryId, location, displayUrl, { includeSoulComment: false });
+            applyToAll(successHTML);
+
+            if (!appState.diaryImages[idEsc].includes(storageVal)) {
                 const slot = appState.diaryImages[idEsc].length;
-                appState.diaryImages[idEsc].push(data.image_url);
+                appState.diaryImages[idEsc].push(storageVal);
                 ensureDiaryImageMeta(diaryId)[slot] = 'aigc';
                 saveState();
             }
@@ -7292,12 +7545,12 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     if (!saveStateDiaryRerenderLock) {
                         saveStateDiaryRerenderLock = true;
                         try {
-                            renderDiaryListFromState();
+                            await renderDiaryListFromState();
                         } finally {
                             saveStateDiaryRerenderLock = false;
                         }
                     } else {
-                        renderDiaryListFromState();
+                        await renderDiaryListFromState();
                     }
                 } catch (re) {
                     console.warn('renderDiaryListFromState after AIGC image failed:', re);
@@ -8823,8 +9076,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     }
 
     /** 从 appState 恢复日记列表 DOM（与橱柜一致：刷新后从 state 渲染） */
-    function renderDiaryListFromState() {
+    async function renderDiaryListFromState() {
         if (!diaryList) return;
+        diaryList.querySelectorAll('img[src^="blob:"]').forEach((img) => {
+            try {
+                URL.revokeObjectURL(img.src);
+            } catch (_) {}
+        });
         diaryList.innerHTML = '';
         const episodic = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
         const diaryEntries = episodic.filter((m) => m.category === 'travel' && m.diaryId).slice();
@@ -8937,6 +9195,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             if (diaryBadge) diaryBadge.classList.remove('hidden');
             if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
         }
+
+        await hydrateDiaryImagesInRoot(diaryList);
     }
 
     /** 橱柜展示用：有 scene 用 scene.label；无 scene 时缩短 location（·前一段或前6字+省略号），完整名放 title */
@@ -9123,11 +9383,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         rec.scene_label = null;
         saveState();
         if (typeof renderDiaryListFromState === 'function') {
-            try {
-                renderDiaryListFromState();
-            } catch (e) {
-                console.warn('renderDiaryListFromState after furniture reward failed:', e);
-            }
+            void (async () => {
+                try {
+                    await renderDiaryListFromState();
+                } catch (e) {
+                    console.warn('renderDiaryListFromState after furniture reward failed:', e);
+                }
+            })();
         }
     }
 
@@ -9473,7 +9735,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
 
     // 初始化入口
-    renderDiaryListFromState(); // 从 state 恢复日记列表（与橱柜一致）
+    void renderDiaryListFromState(); // 从 state 恢复日记列表（与橱柜一致）
     renderFurnitureLayer(); // 渲染已摆放家具
     renderCabinetGrid();
     renderMemoryWall();
