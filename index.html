@@ -817,19 +817,24 @@
             flex-wrap: wrap;
             gap: 4px;
             justify-content: flex-start;
+            align-items: flex-start;
             margin-top: 6px;
         }
         .memory-modal-content .soul-dossier-chip {
             display: inline-flex;
             align-items: center;
+            max-width: 100%;
             padding: 3px 10px;
-            border-radius: 999px;
+            border-radius: 10px;
             font-size: 10px;
             font-weight: 600;
+            line-height: 1.35;
             color: #6b4f2e;
             background: rgba(255, 255, 255, 0.85);
             border: 1px solid rgba(232, 196, 168, 0.95);
             box-shadow: 0 1px 2px rgba(61, 52, 40, 0.06);
+            white-space: normal;
+            word-break: break-word;
         }
         .memory-modal-content .soul-dossier-details {
             margin-top: 6px;
@@ -7996,7 +8001,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 if (!t) return '';
                 const s0 = String(t).trim();
                 const a = s0.split(/[，,。；;]/);
-                return truncateText((a[0] || s0).replace(/\s+/g, ''), 6);
+                const clause = (a[0] || s0).replace(/\s+/g, ' ').trim();
+                return truncateText(clause, 56);
             };
             const c1 = firstChunk(prefs.food);
             const c2 = firstChunk(prefs.abilities);
