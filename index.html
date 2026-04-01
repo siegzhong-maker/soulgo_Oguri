@@ -822,99 +822,17 @@
             background: rgba(255, 253, 248, 0.72);
             overflow: hidden;
         }
-        .memory-modal-content .soul-dossier-identity-wrap .soul-dossier-tagline--preview {
-            padding: 6px 8px 2px;
+        .memory-modal-content .soul-dossier-identity-body {
             margin: 0;
-        }
-        .memory-modal-content .soul-dossier-tagline--preview:has(+ .soul-dossier-identity-details[open]) {
-            display: none;
-        }
-        .memory-modal-content .soul-dossier-identity-details {
-            margin: 0;
-        }
-        .memory-modal-content .soul-dossier-identity-details > summary {
-            cursor: pointer;
-            list-style: none;
-            user-select: none;
-            margin: 0;
-            padding: 0;
-        }
-        .memory-modal-content .soul-dossier-identity-details > summary::-webkit-details-marker {
-            display: none;
-        }
-        .memory-modal-content .soul-dossier-identity-summary {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            padding: 6px 8px;
-            font-size: 10px;
-            font-weight: 700;
-            color: #6b5a48;
-            border-top: 1px dashed rgba(232, 196, 168, 0.75);
-            background: rgba(255, 255, 255, 0.55);
-            transition: background 0.15s ease, color 0.15s ease;
-        }
-        .memory-modal-content .soul-dossier-identity-details > summary:hover .soul-dossier-identity-summary,
-        .memory-modal-content .soul-dossier-identity-details > summary:focus-visible .soul-dossier-identity-summary {
-            background: rgba(255, 255, 255, 0.88);
-            color: var(--soul-ink);
-        }
-        .memory-modal-content .soul-dossier-identity-details > summary:focus-visible {
-            outline: none;
-        }
-        .memory-modal-content .soul-dossier-identity-details > summary:focus-visible .soul-dossier-identity-summary {
-            box-shadow: inset 0 0 0 2px rgba(232, 196, 168, 0.95);
-        }
-        .memory-modal-content .soul-dossier-identity-chevron {
-            display: inline-block;
-            font-size: 11px;
-            line-height: 1;
-            opacity: 0.75;
-            transition: transform 0.2s ease;
-        }
-        .memory-modal-content .soul-dossier-identity-details[open] .soul-dossier-identity-chevron {
-            transform: rotate(180deg);
-        }
-        .memory-modal-content .soul-dossier-identity-label-open {
-            display: none;
-        }
-        .memory-modal-content .soul-dossier-identity-details[open] .soul-dossier-identity-label-closed {
-            display: none;
-        }
-        .memory-modal-content .soul-dossier-identity-details[open] .soul-dossier-identity-label-open {
-            display: inline;
-        }
-        /* 展开后正文在上、横条在下，与折叠时「预览 + 底部横条」同一位置，避免收起按钮跑到顶部 */
-        .memory-modal-content .soul-dossier-identity-details[open] {
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-        .memory-modal-content .soul-dossier-identity-details[open] .soul-dossier-identity-full {
-            order: 1;
-            flex: 1 1 auto;
-            min-height: 0;
-        }
-        .memory-modal-content .soul-dossier-identity-details[open] > summary {
-            order: 2;
-            flex-shrink: 0;
-            margin-bottom: 0;
-        }
-        .memory-modal-content .soul-dossier-identity-full {
+            padding: 6px 8px 8px;
             font-size: 10px;
             line-height: 1.55;
             color: var(--soul-ink);
             white-space: pre-wrap;
             word-break: break-word;
             overflow-wrap: anywhere;
-            max-height: min(40vh, 200px);
+            max-height: min(50vh, 280px);
             overflow-y: auto;
-            padding: 8px 8px 10px;
-            margin: 0;
-            border-radius: 0;
-            background: rgba(255, 253, 248, 0.95);
-            border: none;
         }
         .memory-modal-content .soul-dossier-chips {
             display: flex;
@@ -8606,17 +8524,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             const identityBlockHTML = idClean
                 ? (
                     '<div class="soul-dossier-identity-wrap">' +
-                    '<p class="soul-dossier-tagline soul-dossier-tagline--preview">' + idEsc + '</p>' +
-                    '<details class="soul-dossier-identity-details">' +
-                    '<summary>' +
-                    '<span class="soul-dossier-identity-summary">' +
-                    '<i class="ph-fill ph-caret-down soul-dossier-identity-chevron" aria-hidden="true"></i>' +
-                    '<span class="soul-dossier-identity-label-closed">展开身份全文</span>' +
-                    '<span class="soul-dossier-identity-label-open">收起全文</span>' +
-                    '</span>' +
-                    '</summary>' +
-                    '<div class="soul-dossier-identity-full">' + idEsc + '</div>' +
-                    '</details>' +
+                    '<p class="soul-dossier-identity-body">' + idEsc + '</p>' +
                     '</div>'
                 )
                 : '<p class="soul-dossier-tagline">' + escapeHtml('森林里的美食探险家') + '</p>';
