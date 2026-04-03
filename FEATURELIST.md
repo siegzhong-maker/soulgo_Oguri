@@ -1,37 +1,110 @@
-# SoulGo `index.html` Feature List（现有能力梳理）
+# SoulGo 能力清单（负责人 / 路演参考 + 技术对照）
 
-> 范围：以当前 `index.html` 为主（单页前端），补充其直接依赖的后端接口 `api/*.js`，以及 **Web Bluetooth 硬件脚本** [`bleConfig.js`](bleConfig.js)、[`esp32BleClient.js`](esp32BleClient.js)（与固件 GATT 对齐）。  
-> 重点：**RAG + 记忆** 的“写入→检索→注入生成→可视化解释”闭环；**可选实体硬件**在打卡成功时的震动反馈。
+本文档供**负责人**在准备路演或对外讲解时，与团队手中的**路演脚本**搭配使用：脚本负责故事线与节奏，本文档负责**「讲到哪一段时，产品上对应什么、能演示什么、边界在哪里」**，避免口头表述与实现脱节。
+
+---
+
+## 与路演脚本怎么配合
+
+| 路演脚本里常见板块 | 建议用本文档的哪里 |
+|---|---|
+| 开场 / 痛点 / 我们要做什么 | 下一节「价值主张」+「用户能感知到什么」 |
+| 产品 Demo、现场走流程 | 「建议 Demo 动线」 |
+| 差异化、技术壁垒、AI 怎么用 | 「可强调的亮点」+ 后文 **RAG + 记忆** 小节（用口语转述即可，不必念接口名） |
+| 投资人 / 合作方追问「数据在哪、会不会丢、能不能规模化」 | 「答辩口径提示」+ 文末「关键约束」 |
+
+**口径建议**：对外多用「旅行记忆」「角色一致」「可解释的回忆过程」；接口名、文件名留在答疑或附录式章节即可。
+
+---
+
+## 价值主张（可嵌入路演的 30 秒版）
+
+SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子宠物会**记住**你去过哪里、写过什么，下次生成内容时会**主动翻旧账**（检索相关记忆），并把「我在想什么」用**思考步骤 + 日记里的记忆提示**露给用户看——不是黑盒生成，而是**带解释的记忆增强互动**。可选的实体硬件（蓝牙挂件）在打卡成功时**震动反馈**，把线上叙事延伸到手里。
+
+---
+
+## 用户能感知到什么（按故事线，少提技术词）
+
+1. **地图上打卡**：输入地点 → 宠物写一篇旅行日记 → 地图上出现图钉、列表里留下足迹。  
+2. **回到小屋**：宠物按「计划」做小动作；若连接了蓝牙设备，打卡瞬间会有**震动**（稀有掉落与普通掉落震感不同）。  
+3. **看见记忆在工作**：思考过程里会提到**翻到了几条和这次旅行相关的记忆**；日记里也能展开「参考了哪些回忆」。  
+4. **收藏与房间**：打卡可能掉落纪念品进**橱柜**，可摆进房间；照片墙等会跟着丰富。  
+5. **人格不飘**：应用内有「核心档案」与可编辑的**人格卡片**；后台生成也会用同一份**角色圣经**（`soul.md`）约束口吻与设定，减少「每次像换了一个角色」的感觉。
+
+---
+
+## 可强调的亮点（对照脚本里的「差异化」）
+
+- **记忆闭环**：不是单次 Chat，而是「打卡 → 结构化记忆摘要 →（可选）向量入库 → 下次生成前检索 → 写进 prompt → UI 上可解释」。适合强调**可持续运营的内容资产**（足迹越多，体验越厚）。  
+- **可解释 AI**：用户能看到「翻记忆」的步骤与条数，降低「胡编」感，路演时比纯生成更有**信任叙事**。  
+- **角色工程化**：`soul.md` = 单一事实来源的角色圣经；应用内档案与 API 共用同一设定逻辑，适合讲**IP 延展、多角色复制时的工程方法**（而非仅靠 prompt 临场发挥）。  
+- **软硬结合叙事**：Web 直连蓝牙、无需 App 商店过审即可演示**实体伴游**（需说明浏览器与 HTTPS 限制，见下文答辩口径）。  
+- **隐私与数据主权（诚实优势）**：主要旅行记忆与日记在**用户浏览器本地**持久化，不依赖账号体系也能演示完整链路；同时说明**暂不跨设备同步**、向量池当前为**演示级内存实现**等边界。
+
+---
+
+## 建议 Demo 动线（约 3～5 分钟）
+
+1. **地图**：输入一个地点 → 打卡 → 看日记生成、思考步骤、是否提示「参考了 X 条记忆」。  
+2. **小屋**：点开日记 / 橱柜，展示掉落与收藏；若有 BLE 设备，提前在地图页连接，再打卡一次看震动差异。  
+3. **宠物记忆**：打开「性格 / 核心档案」，展示世界观长文 + 人格卡片；说明「这是角色设定与生成一致性的来源」。  
+4. （可选，偏技术听众）记忆面板里向量池调试：展示「写入过多少条、最近写了什么」——用于证明 RAG 链路**真的在跑**，而非文案。
+
+---
+
+## 答辩口径提示（诚实、短句）
+
+- **「记忆存在哪？」** 用户侧主要存在本机浏览器；服务端向量池用于**同一次部署会话内**的相似度检索，**冷启动会空**，正式产品需换持久化向量库——当前是**可演示的 MVP 架构**。  
+- **「和 ChatGPT 有啥不同？」** 强调**场景闭环**（旅行 + 宠物 + 收藏）+ **记忆写入与可解释检索** + **角色圣经**，而不是模型本身。  
+- **「能规模化吗？」** 生成与抽取已拆成独立 API，角色与记忆格式结构化；规模化主要换**向量存储与同步策略**，产品形态不需推倒重来。  
+- **「iPhone 能连蓝牙吗？」** Safari 不支持 Web Bluetooth；路演用 **Chrome / Edge（安卓或桌面）** 或提前录屏兜底。
+
+---
+
+## 详细说明（研发对照 · 路演不必逐条念）
+
+以下章节保留**模块表、接口名、数据结构与约束**，便于负责人答技术细节、研发对齐排期；路演现场以**上文叙事 + Demo** 为主即可。
+
+### 文档范围（技术）
+
+- 主体：[`index.html`](index.html) 单页与直接依赖的 [`api/*.js`](api)。  
+- 硬件：[`bleConfig.js`](bleConfig.js)、[`esp32BleClient.js`](esp32BleClient.js)（与固件 GATT 对齐）。  
+- 静态资源：仓库根 [`soul.md`](soul.md) 与 `index.html` 一并部署到站点根（`GET /soul.md`），供「核心档案」与兜底 JSON。  
+- 技术重点：**RAG + 记忆** 的写入→检索→注入生成→可视化解释；**soul.md / 核心档案** 与生成链路分工；可选 **BLE 震动反馈**。
 
 ## 产品概览（MVP 当前形态）
 
-- **核心体验**：地图打卡一个地点 → 生成一篇旅行日记 → 掉落/制作纪念品（橱柜收藏 + 房间摆放）→ 宠物在房间里基于“记忆/计划”行动与对话。
-- **可选硬件伴游**：浏览器通过 **Web Bluetooth** 连接 **ESP32-C3**（广播名与 [`bleConfig.js`](bleConfig.js) 中 `DEVICE_NAME` 一致，默认 `ESP32-C3-Tracker`）。打卡流程在 **掉落场景与 tier 已确定后** 立即向设备发送 `VIB:<mode>`（普通款 **C** 短震，其余 **B/A/S** 长震），不等待思考步骤动画播完。
-- **数据形态**：
+- **核心体验（对用户说）**：地图打卡一个地点 → 生成一篇旅行日记 → 掉落/制作纪念品（橱柜收藏 + 房间摆放）→ 宠物在房间里基于「记忆与计划」行动与互动。  
+- **核心体验（对内）**：同上，背后串联日记 API、记忆抽取、可选向量写入与检索、以及 `soul.md` 角色钉扎。  
+- **可选硬件伴游**：浏览器通过 **Web Bluetooth** 连接 **ESP32-C3**（设备广播名与 [`bleConfig.js`](bleConfig.js) 中 `DEVICE_NAME` 一致，默认 `ESP32-C3-Tracker`）。打卡时在**掉落档位已定、思考文案已就绪**后立刻下发震动指令（普通款 **C** 短震，**B/A/S** 长震），**不等待**思考动画播完，避免体感滞后。
+- **数据形态（研发 / 答疑用；路演可跳过）**：
   - **前端状态（持久化）**：`localStorage` 保存 `appState`（打卡、日记、橱柜、记忆等）。
-  - **RAG 向量记忆池（服务端内存）**：一次打卡写入一条向量记忆，供后续生成日记时检索使用（注意：当前实现是**进程内存**，实例重启会清空）。
+  - **日记插图（可选 IndexedDB）**：大图可存为 `idb:v1:` 引用以减轻 `localStorage` 配额压力（`soulgo_diary_images`），小图或仍可用 data URL 存在状态中。
+  - **RAG 向量记忆池（服务端内存）**：一次打卡写入一条向量记忆，供后续生成日记时检索使用（注意：当前实现是**进程内存**，实例重启会清空）。**不向量化**整份 `soul.md` 或核心档案长文，角色设定靠 prompt 注入。
+  - **角色圣经 `soul.md`**：**服务端**通过 [`api/load-soul.js`](api/load-soul.js) 读取部署目录下的 `soul.md` 拼入部分 API 的 system 提示；**前端**通过 `fetch('/soul.md')` 解析 `##` 章节渲染「核心档案」，并解析文末 fenced `json` 代码块中的 `semanticProfileDefaults` 作为结构化人格兜底。
   - **BLE 连接状态**：仅存于当前页面内存（刷新需重连）；无服务端参与。
 
 ## Feature 表格（按入口/能力/接口对齐）
 
-> 说明：表格以“用户可见入口”为主；RAG/记忆相关行用 **加粗** 标出，并在“RAG/记忆关联”列说明闭环位置。
+> **说明**：按「用户可见入口」罗列，便于彩排时逐项勾选「脚本里有没有讲到」；RAG/记忆相关行 **加粗**，并在「RAG/记忆关联」列标出闭环位置。
 
 | 模块 | 用户入口/触发 | Feature | 产出/状态变化（前端） | 相关接口（后端） | RAG/记忆关联 |
 |---|---|---|---|---|---|
 | 地图 | 地点输入 + 打卡 | 打卡联动总流程（生成日记/掉落/写入记忆/更新 UI） | `locations` 增加；`mapPins` 增加；日记/橱柜/记忆可能更新 | `POST /api/diary`、`POST /api/memory-summary`、`POST /api/embed-and-store` | **记忆写入起点**：打卡→抽取摘要→写向量池 |
 | 地图 | 自动 | 地图图钉（随机位置） | `mapPins: {location,xRatio,yRatio}` | - | - |
 | 地图 | 自动 | 已打卡城市列表聚合 | 从 `memories.episodic` 聚合渲染（城市/日期/摘要） | - | 与 episodic 结构绑定（不是单纯 `locations`） |
-| 宠物小屋 | 顶部按钮「宠物记忆」 | 记忆总览/编辑（旅行/性格/习惯） | 读写 `memories.episodic / semanticProfile / habit` | `GET /api/debug-memories`（调试页内） | **记忆可视化入口**（含 RAG 调试） |
+| 宠物小屋 | 顶部按钮「宠物记忆」 | 记忆总览/编辑（旅行 / 性格 / 习惯；**核心档案**为小粟纸感 UI） | 读写 `memories.episodic / semanticProfile / habit`；核心档案正文来自 `soul.md` 缓存 | `GET /api/debug-memories`（调试页内）；静态 **`GET /soul.md`** | **记忆可视化入口**（含 RAG 调试）；**结构化人格**优先 `semanticProfile`，否则 soul.md 内 JSON 或内嵌默认值 |
 | 宠物小屋 | 思考区 | 展示思考步骤 +（第1步）展示“本次翻到的记忆” | 展示 `thinkingSteps`；可展示 `memorySources` | 来自 `POST /api/diary` 的 `thinkingSteps`/`memoryCount` | **可解释链路**：让用户看到“回忆在工作” |
 | 宠物小屋 | 热点「日记」 | 打开旅行日记弹窗 | 读取 `diary-list` 渲染 | - | 日记卡片可展示“翻到 X 条记忆” |
 | 日记 | 打卡后自动 | **生成日记（统一 JSON）** | 新增日记卡片；可能标记未读 badge | **`POST /api/diary`** | **RAG 注入生成**（retrieve→episodicMemories→prompt） |
 | 日记 | 打卡后自动 | 日记卡片“本次翻到 X 条旅行记忆”提示 + 展开来源 | 依赖 `memoryCount`/`memorySources`（前端启发式） | `POST /api/diary`（count） | **可解释链路**（count + sources） |
 | 日记 | 点击「插入图片」 | 本地插图上传（文件） | `diaryImages[diaryId]` 写入；`localStorage` 持久化 | - | - |
 | 日记 | 生成后异步 | AIGC 日记配图 + 导出图片 | `diaryImages[diaryId]` 写入；UI 同步更新 | `POST /api/generate-image` | - |
-| 记忆 | 打卡后自动 | **从日记抽取结构化记忆（summary/emotion/key_facts）** | 用于写入 `memories.episodic` 字段 | **`POST /api/memory-summary`** | **记忆结构化/可检索摘要**（为向量写入准备） |
+| 日记 | 用户触发（插图相关） | 基于插图 + 人格快照的短评/互动文案 | 前端调用后更新日记相关展示 | **`POST /api/diary-image-comment`** | 使用 `getSoulShortBlurb` 钉扎角色，与 `semanticProfileSnapshot` 对齐 |
+| 记忆 | 打卡后自动 | **从日记抽取结构化记忆（summary/emotion/key_facts）** | 用于写入 `memories.episodic` 字段 | **`POST /api/memory-summary`** | **记忆结构化/可检索摘要**（为向量写入准备）；可选上下文：`nfc_source`、`checkin_frequency`、`interaction_frequency`；system 侧拼入 **soul.md 短摘要**（`getSoulShortBlurb`） |
 | 记忆 | 打卡后自动 | **写入情景记忆（episodic.travel）** | `memories.episodic.unshift(record)`；持久化 | - | **前端记忆池**（非向量）用于气泡/聚合/解释 |
 | 记忆 | 打卡后异步 | **向量化写入（RAG store）** | `appState.debug.ragLastError` 可能更新 | **`POST /api/embed-and-store`** | **RAG 写入**（embedding→内存向量库） |
-| RAG | 生成日记时自动 | **向量检索召回 topK** | 不直接落前端状态（仅影响生成结果） | **`POST /api/retrieve`** | **RAG 召回**（embedding query → cosine topK） |
+| RAG | 生成日记时自动 | **向量检索召回 topK** | 不直接落前端状态（仅影响生成结果） | **`POST /api/retrieve`** | **RAG 召回**（embedding query → cosine topK）；query 在服务端由地点、性格、爱好及 **`semanticProfileSnapshot` 偏好词**、习惯摘要等拼接 |
 | RAG | 记忆面板（调试） | 查看向量记忆池总数/最近 N 条/地点分布 | 仅展示，不持久化 | **`GET /api/debug-memories`** | **RAG 可观测性**（验证写入是否成功） |
 | 橱柜 | 热点「橱柜」 | 打开橱柜弹窗（12 格） | `cabinetItems` 渲染；打开后清未读 | - | - |
 | 橱柜 | 打卡掉落 | 纪念品掉落 → Reward Modal | `cabinetItems` 增加；`cabinetHasNewUnseen=true` | - | 掉落可能绑定 `memoryTag`/`ragUnlockSource` |
@@ -39,6 +112,7 @@
 | 家具 | 制作流程 | 制作纪念品遮罩（进度/提示） | 仅 UI 过渡；之后可能可摆放 | `POST /api/generate-furniture` | - |
 | 房间 | Reward Modal 选择 | 立即摆放/放入橱柜 | `placedFurniture` / `cabinetItems` 更新 | - | - |
 | 房间 | 音乐盒 | BGM 选择/音量偏好 | `localStorage` 保存 | - | - |
+| 宠物小屋 | 空闲/自主行为（若配置） | 大模型意图决策或回退本地性格决策 | 状态与思考步骤更新 | **`POST /api/pet/decide`**（`window.PET_DECIDE_API_URL`） | 使用 **soul.md 短摘要** 钉扎；失败时走本地 `decidePersonalityBehavior` |
 | 硬件 | 地图页 BLE 工具条 | 「连接设备」→ SoulGo 说明弹窗 →「搜索并连接」→ **系统蓝牙选择器**（必选） | GATT 连接 [`esp32BleClient.js`](esp32BleClient.js)；状态「已连接 · 设备名 / 未连接」 | - | - |
 | 硬件 | 地图页（已连接） | 「断开设备」直接断开 | `gatt.disconnect`；状态复位 | - | - |
 | 硬件 | 打卡成功且已连接 | 按掉落 **tier** 映射发送 `VIB:1`（短）或 `VIB:2`（长） | 在 `thinkingSteps` 计算完成后 **立即** 发送，不等待思考动画 | - | 配置见 [`bleConfig.js`](bleConfig.js) `TIER_TO_VIB` |
@@ -80,6 +154,9 @@
 - **思考区（解释型 UI）**
   - 在播放思考步骤时显示
   - 第 1 步可额外展示“本次翻到的旅行记忆”（让用户理解 RAG/回忆来源）
+- **「宠物记忆」弹窗**
+  - 分区：**旅行**（情景记忆列表）、**性格**（含「小粟核心档案」纸感 UI：从 `soul.md` 的 `##` 章节渲染完整设定；可点开编辑 **人格卡片** `semanticProfile`）、**习惯**
+  - 调试：可查看向量记忆池（`GET /api/debug-memories`）及最近一次 `embed-and-store` 错误提示（`appState.debug.ragLastError`）
 - **照片墙**
   - 从橱柜中取最近若干物品，以“拍立得”形式贴在墙上做环境叙事
 
@@ -129,6 +206,8 @@
 
 ## RAG + 记忆（重点）
 
+**路演可概括**：每次打卡把经历收成「短摘要 + 关键词」，写入可选的向量池；下次生成日记前先做相似度检索，把捞回来的旧记忆和用户人设一起交给模型。思考区 / 日记上的「翻到 X 条记忆」是**产品化的可解释层**，不是装饰文案。
+
 ### 记忆类型与前端数据结构（`appState.memories`）
 
 - **情景记忆（episodic）**
@@ -139,7 +218,8 @@
   - 由当前人格配置生成的“长期特质片段”（用于展示与口吻一致性）
 - **人格设定快照（semanticProfile）**
   - identity / preferences / speaking_style / call_user 等
-  - 会被裁剪成“轻量快照”用于日记生成，避免长文本干扰
+  - **来源优先级（展示与快照）**：用户在「宠物记忆」里保存的 `memories.semanticProfile` **优先**；否则使用 `soul.md` 文末 JSON 中的 `semanticProfileDefaults`；再否则使用 `index.html` 内嵌 `SOUL_DEFAULTS_JSON_EMBEDDED`。
+  - 会被裁剪成“轻量快照”（`getSemanticProfileSnapshotForDiary`）用于日记与相关 API，避免长文本干扰；**应用内编辑不会写回**仓库里的 `soul.md` 文件。
 - **小习惯（habit）**
   - 记录互动行为形成的习惯摘要（也会被取摘要注入日记生成查询）
 
@@ -150,6 +230,7 @@
    - `summary`（30–50 字、一句话可检索）
    - `emotion`（excited/tender/curious/nostalgic/calm）
    - `key_facts`（2–4 关键词，用于检索与掉落/主题判定）
+   - 请求体除必填字段外，还可带 **`nfc_source`、同地点 `checkin_frequency`、近 7 天 `interaction_frequency`**、`last_summary` 等，供抽取时丰富 summary/key_facts（仍以日记正文为主）。
    - 失败时回退模板 `buildEpisodicSummary(...)`
 3. **写入前端情景记忆**：`appendEpisodicMemory(...)` 写入 `appState.memories.episodic`（带 strength/importance/recall 字段）。
 4. **写入向量记忆池（RAG）**：异步调用 `POST /api/embed-and-store`
@@ -175,9 +256,10 @@
 ### RAG 如何注入日记生成（闭环）
 
 - `POST /api/diary`（**RAG + 统一 JSON 生成**）：
-  1. 组装 RAG query（地点 + 性格 + 爱好 + 人格偏好 + 习惯摘要等）
+  0. **System 提示**：在可用时拼接 `getSoulTextForPrompt(5500)` 读取的 **磁盘 `soul.md` 节选**（「角色圣经」），与基础日记指令合并；**长文设定以服务端文件为准**，与前端「核心档案」展示同源文件名但可能版本不同步（若仅改本地 `semanticProfile` 未更新部署文件）。
+  1. 组装 RAG query（地点 + 性格 + 爱好 + **快照中的偏好/能力/厌恶词** + 习惯摘要等）
   2. 调 `POST /api/retrieve` 召回 `episodicMemories`（字符串摘要列表）
-  3. 把 `episodicMemories + semanticTraits + semanticProfileSnapshot + habitSummaries` 注入到系统提示词中
+  3. 把 `episodicMemories + semanticTraits + semanticProfileSnapshot + habitSummaries` 注入到 user/上下文提示中
   4. 让模型输出严格 JSON：
      - `content`：旅行日记正文（80–200 字）
      - `behaviorPlan`：宠物房间行为序列（emote/walk/anim/state/wait）
@@ -225,19 +307,29 @@
 
 ## 后端接口清单（与前端关系）
 
-- **`POST /api/diary`**：RAG 检索 + 生成“统一 JSON（日记+行为+橱柜+思考）”
-- **`POST /api/memory-summary`**：从日记与上下文抽取结构化记忆（summary/emotion/key_facts）
-- **`POST /api/embed-and-store`**：将 summary/key_facts embedding 后写入向量记忆池
-- **`POST /api/retrieve`**：对 query embedding 后从向量记忆池 topK 召回
+**负责人备忘**：不必在路演中逐条念接口。对外可概括为——**日记与记忆抽取**依赖 OpenRouter（`OPENROUTER_API_KEY`）；**向量写入与检索**依赖 Google Gemini Embedding（`GOOGLE_GENERATIVE_AI_API_KEY`）；缺省时对应链路降级或报错，其中向量化写入在前端为**非阻塞**，避免卡死打卡主流程。
+
+- **`POST /api/diary`**：RAG 检索 + 生成“统一 JSON（日记+行为+橱柜+思考）”；内部读取 `soul.md` 长节选进 system prompt
+- **`POST /api/memory-summary`**：从日记与上下文抽取结构化记忆（summary/emotion/key_facts）；system 侧可拼 **soul.md 短摘要**
+- **`POST /api/embed-and-store`**：将 summary/key_facts embedding 后写入向量记忆池（需 **`GOOGLE_GENERATIVE_AI_API_KEY`**）
+- **`POST /api/retrieve`**：对 query embedding 后从向量记忆池 topK 召回（同上 Google Key）
 - **`GET /api/debug-memories`**：调试用：查看向量记忆池最近 N 条
 - **`POST /api/generate-image`**：生成日记配图
 - **`POST /api/generate-furniture`**：生成家具资产
+- **`POST /api/diary-image-comment`**：日记插图相关短评；使用 soul 短摘要 + 可选 `semanticProfileSnapshot`
+- **`POST /api/pet/decide`**：宠物自主行为意图（OpenRouter）；使用 soul 短摘要；前端通过 `window.PET_DECIDE_API_URL` 指向（默认 `/api/pet/decide`）
 - **`POST /api/chat`**：OpenRouter 透传代理（通用）
+
+内部模块（非独立 HTTP）：[`api/load-soul.js`](api/load-soul.js) 供上述接口 `import` 读取仓库根 `soul.md`。
+
+**环境变量（与当前实现对齐）**：日记/记忆抽取/插图评论/宠物决策等依赖 **`OPENROUTER_API_KEY`**（及可选 `OPENROUTER_MODEL_ID` 等）；向量写入与检索依赖 **`GOOGLE_GENERATIVE_AI_API_KEY`**。缺省时对应接口返回 503，前端对 `embed-and-store` 等非阻塞链路可能仅记录 `appState.debug.ragLastError`。
 
 ## 当前实现的关键约束（会影响“记忆”表现）
 
 - **向量记忆池是“进程内存”**：`lib/memory-vector-store.js` 里用数组存储，实例重启/冷启动后会清空。  
   - 这也是前端调试面板提示“可能是刚重启的实例（内存向量库会清空）”的原因。
 - **前端记忆是本地持久化**：`appState.memories` 会留在浏览器 `localStorage`，不随服务端重启而消失（但也不跨设备同步）。
+- **soul.md 双通道**：服务端只读 **部署目录** 文件；浏览器读 **`/soul.md` 静态 URL**。两者应内容一致；仅在前端修改 `semanticProfile` **不会**更新服务端长文圣经，需自行同步文件或依赖快照字段补足结构化设定。
+- **静态托管**：若打开方式导致 `fetch('/soul.md')` 404，前端会提示并回退内嵌 JSON；核心档案长文章节可能显示占位说明。
 - **BLE 不经过服务端**：连接、命令、通知均在浏览器与设备之间完成；**无** `/api` 代理或配对记录；刷新页面后需重新连接。
 
