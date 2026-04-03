@@ -271,7 +271,10 @@
             display: flex;
             align-items: stretch;
             gap: 0.5rem;
-            overflow-x: auto;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            overflow-x: hidden;
+            overflow-y: visible;
             padding: 0.15rem 0.15rem 0.3rem;
         }
         .cabinet-modal .memory-cabinet-tier-scroll.no-scrollbar::-webkit-scrollbar {
