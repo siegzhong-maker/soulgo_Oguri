@@ -304,7 +304,7 @@
         }
         .cabinet-modal .collect-matrix-table {
             border-collapse: separate;
-            border-spacing: 5px 4px;
+            border-spacing: 4px 2px;
             width: max(100%, 300px);
             table-layout: fixed;
         }
@@ -313,8 +313,8 @@
             top: 0;
             z-index: 2;
             background: #e6dccf;
-            padding: 5px 3px;
-            font-size: 9px;
+            padding: 2px 2px;
+            font-size: 8px;
             text-align: center;
             vertical-align: middle;
             line-height: 1.15;
@@ -323,11 +323,26 @@
             position: sticky;
             left: 0;
             z-index: 4;
-            width: 4.25rem;
-            min-width: 4.25rem;
+            width: 5rem;
+            min-width: 5rem;
             text-align: left;
             font-weight: 800;
             color: #5c4a3a;
+            padding: 3px 4px 3px 2px;
+        }
+        .cabinet-modal .collect-matrix-corner-label {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1px;
+            font-size: 8px;
+            line-height: 1.2;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+        }
+        .cabinet-modal .collect-matrix-corner-line {
+            display: block;
+            opacity: 0.92;
         }
         .cabinet-modal .collect-matrix-table tbody td.collect-matrix-cat {
             position: sticky;
@@ -337,12 +352,13 @@
             font-size: 10px;
             font-weight: 700;
             color: #5c4a3a;
-            padding: 4px 4px 4px 2px;
-            width: 4.25rem;
-            min-width: 4.25rem;
-            max-width: 4.25rem;
+            padding: 4px 3px;
+            width: 5rem;
+            min-width: 5rem;
+            max-width: 5rem;
             line-height: 1.2;
             vertical-align: middle;
+            text-align: center;
             border-right: 1px solid rgba(212, 196, 168, 0.55);
             box-shadow: 2px 0 6px rgba(92, 74, 58, 0.06);
         }
@@ -369,17 +385,36 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 2px;
+            gap: 0;
             color: #8d7f73;
             font-size: 9px;
             text-align: center;
-            padding: 4px 2px;
+            line-height: 1.35;
+            padding: 6px 4px;
             pointer-events: none;
         }
-        .cabinet-modal .collect-matrix-cell--empty .tier-hint {
-            font-size: 8px;
-            font-weight: 800;
-            opacity: 0.35;
+        .cabinet-modal .collect-matrix-tier-head {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            padding: 2px 4px;
+            border-radius: 0.35rem;
+            line-height: 1;
+        }
+        .cabinet-modal .collect-matrix-tier-head__row {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+        }
+        .cabinet-modal .collect-matrix-tier-head__label {
+            font-size: 7px;
+            font-weight: 700;
+            opacity: 0.95;
+            line-height: 1.1;
+            margin-top: 0;
         }
         .cabinet-modal .cabinet-view-panel {
             transition: opacity 0.18s ease;
@@ -5345,7 +5380,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             const c = resolveCollectCategoryFromScene(item.scene);
             if (c) return c;
         }
-        if (item.type === 'furniture') return 'bedding';
+        if (item.type === 'furniture') return COLLECT_CATEGORY_FALLBACK_ID;
         if (item.scene && item.scene.label && SCENE_LABEL_TO_COLLECT_CATEGORY.has(item.scene.label)) {
             return SCENE_LABEL_TO_COLLECT_CATEGORY.get(item.scene.label);
         }
@@ -5387,8 +5422,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         if (!entries || entries.length === 0) {
             return `
                 <div class="collect-matrix-cell collect-matrix-cell--empty" aria-hidden="true">
-                    <span class="tier-hint">${tier}</span>
-                    <span>去旅行解锁</span>
+                    <span>打卡解锁</span>
                 </div>`;
         }
         const indices = entries.map((e) => e.origIdx).join(',');
@@ -5410,10 +5444,10 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     function buildCollectMatrixTableHTML(items) {
         const buckets = buildCollectMatrixBuckets(items);
         const tiers = ['S', 'A', 'B', 'C'];
-        let head = `<tr><th class="collect-matrix-corner rounded-tl-lg">品类<br><span class="text-[8px] font-normal opacity-80">× 稀有度</span></th>`;
+        let head = `<tr><th class="collect-matrix-corner rounded-tl-lg" scope="col"><span class="collect-matrix-corner-label"><span class="collect-matrix-corner-line">纵｜品类</span><span class="collect-matrix-corner-line">横｜稀有度</span></span></th>`;
         tiers.forEach((tier) => {
             const tc = TIER_CONFIG[tier] || TIER_CONFIG.C;
-            head += `<th class="rounded-t-lg"><span class="inline-flex flex-col items-center gap-0.5 px-1 py-0.5 rounded-md ${tc.class} font-bold"><i class="ph-fill ${tc.icon} text-[10px]"></i><span>${tier}</span><span class="font-normal scale-90 opacity-90">${tc.label}</span></span></th>`;
+            head += `<th class="rounded-t-lg p-0" scope="col"><span class="collect-matrix-tier-head ${tc.class}"><span class="collect-matrix-tier-head__row"><i class="ph-fill ${tc.icon} text-[9px]" aria-hidden="true"></i><span class="text-[10px] font-extrabold">${tier}</span></span><span class="collect-matrix-tier-head__label">${tc.label}</span></span></th>`;
         });
         head += '</tr>';
         let body = '';
@@ -10251,7 +10285,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 date: new Date().toLocaleDateString('zh-CN'),
                 tier: 'C',
                 ai_generated: true,
-                collectCategory: 'bedding'
+                collectCategory: COLLECT_CATEGORY_FALLBACK_ID
             };
             if (titleEl) titleEl.textContent = '✨ 获得新家具 ✨';
             img.src = item.image_url;
@@ -10298,7 +10332,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     // 添加家具到橱柜
     function addFurnitureToCabinet(item) {
         appState.cabinetItems = appState.cabinetItems || [];
-        if (item && !item.collectCategory) item.collectCategory = 'bedding';
+        if (item && !item.collectCategory) item.collectCategory = COLLECT_CATEGORY_FALLBACK_ID;
         appState.cabinetItems.unshift(item);
         renderCabinetGrid();
         saveState();
