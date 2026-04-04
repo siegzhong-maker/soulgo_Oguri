@@ -24,10 +24,15 @@
 - 生成符合主题的家具提示词（例如：“一张具有 Blue Bottle 风格的现代咖啡桌”或“公园里的竹椅”）。
 - 调用 AI 图像生成 API。
 
-### 4. 奖励：获得新家具
-- **揭晓**：制作动画结束，特效炸开，弹出“获得新物品”模态框。
-- **展示**：显示生成的家具（等距 3D 风格），配有物品名称（如“外滩的复古路灯”）和稀有度光效。
-- **操作**：用户点击“收下”。
+### 4. 奖励：获得新家具（日常灵感 · 低门槛）
+产品定位遵循「低门槛 + 高上限」：**AI 家具 = 可规模化、低摩擦的日常装扮**，不占用「典藏 / 联名 / 在地限定」的心理账户；后者才使用强烈稀有感动效与陈列位。
+
+- **揭晓**：制作结束后弹出轻量「收到灵感小物」模态（弱化边框与标题色，与场景级收集区分）。
+- **展示**：等距 3D 风格图 + 名称；**不使用**典藏向的「稀有度炸光」主视觉；角标为「日常灵感」类文案。
+- **震动**：使用较短、较轻的 `item_obtained_soft` 模式，与高稀有场景收集的 `item_obtained` 区分。
+- **操作**：用户点击「放入橱柜」或「立即摆放」。
+
+**典藏件**（联名、线下 NFC / 地理围栏、活动码等）由独立入口写入橱柜，**不经过** `generate-furniture`；前端在「典藏与限定」分区展示，与「日常灵感收纳」分区隔离。
 
 ### 5. 家具摆放与存储 (Storage & Placement)
 - **存储位置**：所有生成的家具自动存入**“家具橱柜 (Furniture Cabinet)”**。
@@ -43,7 +48,7 @@
 
 ### 前端 (`index.html`)
 - **状态管理**：
-    - 更新 `appState.cabinetItems` 以存储生成的家具对象 `{ id, url, name, source_location, date, position: {x, y, scale} }`。
+    - 更新 `appState.cabinetItems` 以存储家具对象，至少包含：`{ id, type: 'furniture', image, name, source_location, date, tier: 'C', ai_generated, collectCategory, assetSource: 'ai_daily', scarcity: 'soft_capped' }`（`assetSource` / `scarcity` 与旅行场景、典藏件统一建模，便于 UI 分支与运营扩展）。
 - **UI 组件**：
     - **制作动画**：新增 `.pet-anim-crafting` CSS 动画类，包含位移和旋转关键帧。
     - **装修模式**：新增一个图层 `furniture-layer` 在宠物下方/上方，支持 Touch 事件进行拖拽。
@@ -58,7 +63,7 @@
         - 分析输入以确定家具类型（桌子、椅子、灯具、装饰品）。
         - 应用**等距 3D 风格**提示词模板。
     - **模型**：`google/gemini-2.5-flash-image`。
-    - **响应**：`{ image_url: string, item_name: string }`
+    - **响应**：`{ image_url: string, item_name: string, assetSource: 'ai_daily', scarcity: 'soft_capped', source_location: string }`（`assetSource` 固定为日常灵感线，供前端弹窗与橱柜分区使用。）
 
 ## 4. 提示词工程策略
 

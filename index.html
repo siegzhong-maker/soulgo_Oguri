@@ -141,6 +141,38 @@
         #reward-panel.ui-reward-panel .ui-reward-btn.ui-reward-btn--primary::before {
             box-shadow: 0 14px 18px rgba(255, 134, 165, 0.18), 0 10px 18px rgba(120, 90, 60, 0.10);
         }
+
+        /* 日常灵感（AI）获得弹窗：轻量视觉，与典藏级收集区分 */
+        #reward-panel.ui-reward-panel--daily #reward-title {
+            color: #6b7280;
+            text-shadow: none;
+            font-weight: 700;
+        }
+        #reward-panel.ui-reward-panel--daily .ui-reward-clip {
+            opacity: 0.35;
+        }
+        #reward-panel.ui-reward-panel--daily .ui-reward-frame::before {
+            opacity: 0.55;
+            filter: none;
+        }
+        #reward-panel.ui-reward-panel--daily #reward-image {
+            filter: drop-shadow(0 6px 10px rgba(120, 90, 60, 0.12));
+        }
+
+        .cabinet-section-prestige {
+            border-radius: 16px;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            background: linear-gradient(135deg, rgba(255, 251, 235, 0.95), rgba(254, 243, 199, 0.5));
+            padding: 10px 10px 8px;
+            margin-bottom: 10px;
+        }
+        .cabinet-section-daily {
+            border-radius: 16px;
+            border: 1px dashed rgba(167, 139, 250, 0.45);
+            background: rgba(250, 245, 255, 0.65);
+            padding: 10px 10px 8px;
+            margin-top: 8px;
+        }
         
         body {
             background-color: #f0f4f8; 
@@ -3788,7 +3820,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         sleep_soft: [100],
         alert_strong: [80, 40, 80, 40],
         wait_mild: [40],
-        item_obtained: [60, 40, 60]
+        item_obtained: [60, 40, 60],
+        item_obtained_soft: [22]
     };
 
     const hardwareBridge = {
@@ -5339,7 +5372,6 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         });
     }
 
-    const TIER_ORDER = { S: 0, A: 1, B: 2, C: 3 };
     const TIER_CONFIG = {
         S: { icon: 'ph-sparkle', label: '传说', short: 'S', class: 'bg-amber-400 text-amber-900' },
         A: { icon: 'ph-diamond', label: '稀有', short: 'A', class: 'bg-purple-400 text-purple-900' },
@@ -5347,22 +5379,158 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         C: { icon: 'ph-leaf', label: '普通', short: 'C', class: 'bg-gray-300 text-gray-700' }
     };
     const CABINET_TIER_SLOTS = { S: 2, A: 3, B: 3, C: 4 };
-    function sortCabinetByTier(items) {
-        return items.map((item, idx) => ({ item, origIdx: idx })).sort((a, b) => {
-            const tA = TIER_ORDER[(a.item && a.item.tier) || 'C'] ?? 4;
-            const tB = TIER_ORDER[(b.item && b.item.tier) || 'C'] ?? 4;
-            return tA - tB;
-        });
+
+    /** 素材来源：低门槛（AI 日常） vs 高上限（典藏/限定）——与产品「低门槛 + 高上限」一致 */
+    const ASSET_SOURCE = {
+        AI_DAILY: 'ai_daily',
+        USER_UPLOAD: 'user_upload',
+        TRAVEL_SCENE: 'travel_scene',
+        COLLAB: 'collab',
+        GEO_LIMITED: 'geo_limited',
+        CAMPAIGN: 'campaign'
+    };
+    const ASSET_SCARCITY = {
+        UNLIMITED: 'unlimited',
+        SOFT_CAPPED: 'soft_capped',
+        LIMITED: 'limited'
+    };
+    const ASSET_SOURCE_UI = {
+        ai_daily: { short: '灵感', hint: '日常装扮 · 可重复获得', badgeClass: 'bg-violet-100 text-violet-800 border border-violet-200' },
+        user_upload: { short: '记忆', hint: '你上传的生活瞬间', badgeClass: 'bg-rose-50 text-rose-800 border border-rose-200' },
+        travel_scene: { short: '见闻', hint: '打卡解锁的旅行场景', badgeClass: 'bg-emerald-50 text-emerald-900 border border-emerald-200' },
+        collab: { short: '联名', hint: '品牌联名典藏', badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300' },
+        geo_limited: { short: '在地', hint: '线下或旅游限定', badgeClass: 'bg-sky-100 text-sky-900 border border-sky-300' },
+        campaign: { short: '活动', hint: '限时活动奖励', badgeClass: 'bg-fuchsia-100 text-fuchsia-900 border border-fuchsia-300' }
+    };
+    const PRESTIGE_ASSET_SOURCES = new Set([ASSET_SOURCE.COLLAB, ASSET_SOURCE.GEO_LIMITED, ASSET_SOURCE.CAMPAIGN]);
+
+    function resolveCabinetAssetSource(item) {
+        if (!item) return ASSET_SOURCE.TRAVEL_SCENE;
+        const raw = item.assetSource;
+        if (raw && ASSET_SOURCE_UI[raw]) return raw;
+        if (item.type === 'furniture') {
+            if (item.ai_generated === false) return ASSET_SOURCE.USER_UPLOAD;
+            return ASSET_SOURCE.AI_DAILY;
+        }
+        if (typeof item.source === 'string') {
+            if (item.source === 'nfc' || item.source === 'geo' || item.source === 'geo_limited') return ASSET_SOURCE.GEO_LIMITED;
+            if (item.source === 'collab' || item.source === 'campaign') return item.source === 'campaign' ? ASSET_SOURCE.CAMPAIGN : ASSET_SOURCE.COLLAB;
+        }
+        if (item.source && typeof item.source === 'object') {
+            if (item.source.assetSource && ASSET_SOURCE_UI[item.source.assetSource]) return item.source.assetSource;
+            if (item.source.partnerId || item.source.kind === 'collab') return ASSET_SOURCE.COLLAB;
+            if (item.source.kind === 'campaign' || item.source.campaignId) return ASSET_SOURCE.CAMPAIGN;
+            if (item.source.kind === 'geo' || item.source.geoFence) return ASSET_SOURCE.GEO_LIMITED;
+        }
+        return ASSET_SOURCE.TRAVEL_SCENE;
     }
 
-    /** 按 tier 分组 cabinetItems，保留 origIdx */
-    function groupCabinetByTier(items) {
+    function resolveCabinetScarcity(item) {
+        if (item && item.scarcity) return item.scarcity;
+        const src = resolveCabinetAssetSource(item);
+        if (src === ASSET_SOURCE.AI_DAILY) return ASSET_SCARCITY.SOFT_CAPPED;
+        if (PRESTIGE_ASSET_SOURCES.has(src)) return ASSET_SCARCITY.LIMITED;
+        return ASSET_SCARCITY.UNLIMITED;
+    }
+
+    function isPrestigeCabinetItem(item) {
+        return PRESTIGE_ASSET_SOURCES.has(resolveCabinetAssetSource(item));
+    }
+
+    function isAiDailyCabinetItem(item) {
+        return item && item.type === 'furniture' && resolveCabinetAssetSource(item) === ASSET_SOURCE.AI_DAILY;
+    }
+
+    /** 橱柜弹层/小部件：典藏与限定 | 稀有度见闻 | 日常 AI 收纳 */
+    function partitionCabinetForDisplay(items) {
+        const prestige = [];
+        const aiDaily = [];
         const byTier = { S: [], A: [], B: [], C: [] };
         (items || []).forEach((item, idx) => {
+            const entry = { item, origIdx: idx };
+            if (isPrestigeCabinetItem(item)) {
+                prestige.push(entry);
+                return;
+            }
+            if (item.type === 'furniture' && resolveCabinetAssetSource(item) === ASSET_SOURCE.AI_DAILY) {
+                aiDaily.push(entry);
+                return;
+            }
             const t = (item.tier || 'C').toUpperCase();
-            if (byTier[t]) byTier[t].push({ item, origIdx: idx });
+            if (byTier[t]) byTier[t].push(entry);
         });
-        return byTier;
+        return { prestige, aiDaily, byTier };
+    }
+
+    function cabinetSourceBadgeHtml(item, sizeKey) {
+        const src = resolveCabinetAssetSource(item);
+        const ui = ASSET_SOURCE_UI[src] || ASSET_SOURCE_UI.travel_scene;
+        const icon = src === ASSET_SOURCE.AI_DAILY ? 'ph-paint-brush' : (isPrestigeCabinetItem(item) ? 'ph-crown' : 'ph-map-pin');
+        const textSz = sizeKey === 'sm' ? 'text-[8px]' : 'text-[9px]';
+        return `<span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded ${textSz} font-bold ${ui.badgeClass}"><i class="ph-fill ${icon} ${textSz}"></i> ${ui.short}</span>`;
+    }
+
+    function buildCabinetModalSlotHTML(entry) {
+        const { item, origIdx } = entry || {};
+        if (!item) return '';
+        const badgeCorner = `<div class="absolute top-1 right-1 z-10">${cabinetSourceBadgeHtml(item)}</div>`;
+        if (item.type === 'furniture') {
+            const fullLabel = item.name || '纪念品';
+            const imgSrc = item.image;
+            return `
+                <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
+                    ${badgeCorner}
+                    <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm rounded-xl border border-[#d4c4a8]"></div>
+                    <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(fullLabel)}</span>
+                </div>`;
+        }
+        if (item.scene || item.location) {
+            const { short: shortLabel, full: fullLabel } = getShortLabel(item);
+            const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+            const ragSource = item.source && typeof item.source === 'object' && item.source.kind === 'rag_unlock'
+                ? item.source
+                : null;
+            const reasonHtml = ragSource && (ragSource.displayName || ragSource.relatedLocation)
+                ? `<span class="block text-[9px] text-[#b85c6f] mt-0.5 leading-snug line-clamp-2">「${escapeHtml(ragSource.displayName || fullLabel)}」来自你在【${escapeHtml(ragSource.relatedLocation || '')}】的一次次打卡。</span>`
+                : '';
+            return `
+                <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
+                    ${badgeCorner}
+                    <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm"></div>
+                    <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span>
+                    ${reasonHtml}
+                </div>`;
+        }
+        return '';
+    }
+
+    function pickAssetSourceForNewSceneItem(sourceOverride, scene) {
+        if (scene && scene.assetSource && ASSET_SOURCE_UI[scene.assetSource]) return scene.assetSource;
+        if (sourceOverride && typeof sourceOverride === 'object' && sourceOverride.assetSource && ASSET_SOURCE_UI[sourceOverride.assetSource]) {
+            return sourceOverride.assetSource;
+        }
+        if (typeof sourceOverride === 'string') {
+            if (sourceOverride === 'nfc' || sourceOverride === 'geo' || sourceOverride === 'geo_limited') return ASSET_SOURCE.GEO_LIMITED;
+            if (sourceOverride === 'collab') return ASSET_SOURCE.COLLAB;
+            if (sourceOverride === 'campaign') return ASSET_SOURCE.CAMPAIGN;
+        }
+        return ASSET_SOURCE.TRAVEL_SCENE;
+    }
+
+    function hydrateCabinetAssetMeta() {
+        const items = appState.cabinetItems || [];
+        let changed = false;
+        items.forEach((item) => {
+            if (!item.assetSource) {
+                item.assetSource = resolveCabinetAssetSource(item);
+                changed = true;
+            }
+            if (!item.scarcity) {
+                item.scarcity = resolveCabinetScarcity(item);
+                changed = true;
+            }
+        });
+        if (changed) saveState();
     }
 
     function resolveCollectCategoryFromScene(scene) {
@@ -5558,11 +5726,31 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         appState.cabinetHasNewUnseen = false;
         saveState();
         hydrateCabinetItemCategories();
+        hydrateCabinetAssetMeta();
         const items = appState.cabinetItems || [];
         const count = items.length;
-        const byTier = groupCabinetByTier(items);
+        const { prestige, aiDaily, byTier } = partitionCabinetForDisplay(items);
 
         let sectionsHTML = '';
+
+        const prestigeSlots = prestige.map(buildCabinetModalSlotHTML).join('');
+        sectionsHTML += `
+            <section class="cabinet-section-prestige memory-cabinet-section">
+                <div class="memory-cabinet-tier-header">
+                    <div class="memory-cabinet-tier-title">
+                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-amber-900"><i class="ph-fill ph-crown text-[10px]"></i> 典藏与限定</span>
+                        <span class="memory-cabinet-tier-count">
+                            ${prestige.length > 0 ? `已收集 ${prestige.length} 件` : '联名 · 在地 · 活动'}
+                        </span>
+                    </div>
+                </div>
+                <p class="text-[9px] text-[#8d7f73] px-0.5 mb-1 leading-snug">高上限奖励：奖励真正出门与生活投入的你。</p>
+                <div class="memory-cabinet-tier-scroll no-scrollbar">
+                    ${prestigeSlots || '<div class="cabinet-slot cabinet-slot--empty max-w-[200px]"><div class="cabinet-slot__media"><i class="ph-bold ph-storefront text-2xl cabinet-empty-icon opacity-40"></i></div><span class="scale-90 text-center px-1">暂无典藏款，多出门走走或关注活动吧</span></div>'}
+                </div>
+            </section>
+        `;
+
         ['S', 'A', 'B', 'C'].forEach((tier) => {
             const slots = CABINET_TIER_SLOTS[tier] || 4;
             const group = byTier[tier] || [];
@@ -5570,49 +5758,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             const tierClass = tc.class;
             const filledCount = group.length;
             const maxPlaceholders = Math.min(2, Math.max(0, slots - filledCount));
-            let slotsHTML = '';
+            let slotsHTML = group.map(buildCabinetModalSlotHTML).join('');
 
-            // 已收集物品
-            for (let i = 0; i < filledCount; i++) {
-                const { item, origIdx } = group[i] || {};
-                if (!item) continue;
-                const isAiFurniture = item.type === 'furniture' && (item.ai_generated !== false);
-                const badgeHtml = isAiFurniture
-                    ? `<span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 text-white"><i class="ph-fill ph-sparkle text-[9px]"></i> AI</span>`
-                    : '';
-
-                if (item.type === 'furniture') {
-                    const fullLabel = item.name || '纪念品';
-                    const shortLabel = fullLabel;
-                    const imgSrc = item.image;
-                    slotsHTML += `
-                        <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
-                            ${badgeHtml ? `<div class="absolute top-1 right-1 z-10">${badgeHtml}</div>` : ''}
-                            <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm rounded-xl border border-[#d4c4a8]"></div>
-                            <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span>
-                        </div>
-                    `;
-                } else if (item.scene || item.location) {
-                    const { short: shortLabel, full: fullLabel } = getShortLabel(item);
-                    const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
-                    const ragSource = item.source && typeof item.source === 'object' && item.source.kind === 'rag_unlock'
-                        ? item.source
-                        : null;
-                    const reasonHtml = ragSource && (ragSource.displayName || ragSource.relatedLocation)
-                        ? `<span class="block text-[9px] text-[#b85c6f] mt-0.5 leading-snug line-clamp-2">「${escapeHtml(ragSource.displayName || fullLabel)}」来自你在【${escapeHtml(ragSource.relatedLocation || '')}】的一次次打卡。</span>`
-                        : '';
-                    slotsHTML += `
-                        <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
-                            ${badgeHtml ? `<div class="absolute top-1 right-1 z-10">${badgeHtml}</div>` : ''}
-                            <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm"></div>
-                            <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span>
-                            ${reasonHtml}
-                        </div>
-                    `;
-                }
-            }
-
-            // 适度展示空槽占位，减轻视觉负担
             for (let i = 0; i < maxPlaceholders; i++) {
                 slotsHTML += `
                     <div class="cabinet-slot cabinet-slot--empty">
@@ -5639,16 +5786,34 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             `;
         });
 
+        const aiSlots = aiDaily.map(buildCabinetModalSlotHTML).join('');
+        sectionsHTML += `
+            <section class="cabinet-section-daily memory-cabinet-section">
+                <div class="memory-cabinet-tier-header">
+                    <div class="memory-cabinet-tier-title">
+                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-violet-100 text-violet-900 border border-violet-200"><i class="ph-fill ph-paint-brush text-[10px]"></i> 日常灵感收纳</span>
+                        <span class="memory-cabinet-tier-count">
+                            ${aiDaily.length > 0 ? `${aiDaily.length} 件` : '低门槛装扮'}
+                        </span>
+                    </div>
+                </div>
+                <p class="text-[9px] text-[#8d7f73] px-0.5 mb-1 leading-snug">AI 根据回忆生成的小装饰，可随时上新、不替代典藏款。</p>
+                <div class="memory-cabinet-tier-scroll no-scrollbar">
+                    ${aiSlots || '<div class="cabinet-slot cabinet-slot--empty max-w-[220px]"><div class="cabinet-slot__media"><i class="ph-bold ph-sparkle text-2xl cabinet-empty-icon opacity-40"></i></div><span class="scale-90 text-center px-1">打卡生成日记后，可在此收纳灵感小物</span></div>'}
+                </div>
+            </section>
+        `;
+
         const emptyHint = count === 0 ? 
             '<div class="text-center text-xs text-[#8d7f73] font-bold mt-4 mb-2">带我去打卡，解锁第一件旅途见闻吧~</div>' : 
             '';
 
         const suggestion = appState.lastFurnitureSuggestion || null;
         const suggestionHtml = suggestion && (suggestion.reason || suggestion.themeId)
-            ? `<div class="mb-2 px-2 py-1.5 rounded-lg bg-gradient-to-r from-violet-50 to-pink-50 border border-violet-100 text-[10px] text-[#6b21a8] flex items-start gap-1">
-                    <i class="ph-fill ph-sparkle mt-0.5"></i>
+            ? `<div class="mb-2 px-2 py-1.5 rounded-lg bg-violet-50/90 border border-violet-100 text-[10px] text-[#5b21b6] flex items-start gap-1">
+                    <i class="ph-fill ph-paint-brush mt-0.5"></i>
                     <div>
-                        <div class="font-bold">AI 主题灵感</div>
+                        <div class="font-bold">日常装扮参考（低门槛）</div>
                         <div>${escapeHtml(suggestion.reason || ('可以尝试「' + (suggestion.themeId || '新主题') + '」房间风格'))}</div>
                     </div>
                </div>`
@@ -5665,7 +5830,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 </div>
 
                 <div class="flex rounded-xl bg-white/50 p-0.5 border border-[#eaddcf] mb-2 shadow-sm">
-                    <button type="button" class="cabinet-segment-btn flex-1 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#ff8fab] text-white shadow-sm" data-cabinet-segment="tier">按等级</button>
+                    <button type="button" class="cabinet-segment-btn flex-1 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#ff8fab] text-white shadow-sm" data-cabinet-segment="tier">按分区</button>
                     <button type="button" class="cabinet-segment-btn flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-[#8d7f73] bg-transparent" data-cabinet-segment="matrix">图鉴矩阵</button>
                 </div>
 
@@ -5684,7 +5849,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                         <span>从左到右越来越稀有 · 从上到下互动越深</span>
                         <button type="button" class="text-[#b85c6f] font-bold underline-offset-2 hover:underline cabinet-matrix-info-toggle" aria-expanded="false">ⓘ</button>
                     </div>
-                    <p id="cabinet-matrix-info-line" class="hidden text-[10px] text-[#8d7f73] mb-2 pl-2 border-l-2 border-[#ff8fab]/50 leading-relaxed">纵轴品类对应出游与交友由浅入深的体验层次，横轴为见闻稀有度（S→C），便于理解收集规则。</p>
+                    <p id="cabinet-matrix-info-line" class="hidden text-[10px] text-[#8d7f73] mb-2 pl-2 border-l-2 border-[#ff8fab]/50 leading-relaxed">纵轴品类对应出游与交友由浅入深的体验层次；横轴稀有度（S→C）主要描述旅行见闻与典藏款。日常 AI 灵感件固定在「普通」格，用于装扮广度，与联名/在地限定的高上限奖励区分开。</p>
                     <div class="flex items-center justify-end gap-2 mb-1">
                         <button type="button" class="text-[9px] font-bold text-[#8d7f73] px-2 py-0.5 rounded-lg border border-[#eaddcf] bg-white/60 cabinet-matrix-layout-btn ring-2 ring-[#ff8fab]/40" data-matrix-layout="table">表格</button>
                         <button type="button" class="text-[9px] font-bold text-[#8d7f73] px-2 py-0.5 rounded-lg border border-[#eaddcf] bg-white/60 opacity-70 cabinet-matrix-layout-btn" data-matrix-layout="compact">紧凑</button>
@@ -5698,7 +5863,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 </div>
 
                 <div class="mt-auto pt-3 text-right">
-                    <p class="text-[10px] text-[#8d7f73] opacity-80">打卡越多，见闻越丰富哦~</p>
+                    <p class="text-[10px] text-[#8d7f73] opacity-80">AI 帮你每天都有新装扮；特别款来自生活与线下相遇～</p>
                 </div>
             </div>
         `;
@@ -5790,10 +5955,16 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
         const tier = (item.tier || 'C').toUpperCase();
         const tc = TIER_CONFIG[tier] || TIER_CONFIG.C;
-        const isAiFurniture = item.type === 'furniture' && (item.ai_generated !== false);
-        const badgesHtml = isAiFurniture
-            ? `<span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${tc.class}"><i class="ph-fill ${tc.icon}"></i> ${tc.label}</span><span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 text-white"><i class="ph-fill ph-sparkle"></i> AI 生成</span>`
-            : `<span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${tc.class}"><i class="ph-fill ${tc.icon}"></i> ${tc.label}</span>`;
+        const src = resolveCabinetAssetSource(item);
+        const ui = ASSET_SOURCE_UI[src] || ASSET_SOURCE_UI.travel_scene;
+        let badgesHtml = '';
+        if (isAiDailyCabinetItem(item)) {
+            badgesHtml = `<span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${ASSET_SOURCE_UI.ai_daily.badgeClass}"><i class="ph-fill ph-paint-brush"></i> 日常灵感</span>`;
+        } else if (isPrestigeCabinetItem(item)) {
+            badgesHtml = `<span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${tc.class}"><i class="ph-fill ${tc.icon}"></i> ${tc.label}</span><span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${ui.badgeClass}"><i class="ph-fill ph-crown"></i> ${ui.short} · 典藏</span>`;
+        } else {
+            badgesHtml = `<span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${tc.class}"><i class="ph-fill ${tc.icon}"></i> ${tc.label}</span><span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${ui.badgeClass}"><i class="ph-fill ph-map-pin"></i> ${ui.short}</span>`;
+        }
         
         let actionBtn = '';
         if (item.type === 'furniture' || item.scene) {
@@ -5817,7 +5988,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 </div>
                 <div class="text-center">
                     <p class="text-lg font-bold text-[#5c4a3a]">${escapeHtml(fullLabel)}</p>
-                    <p class="text-xs text-gray-400 mt-1">${item.source_location ? '来源：' + escapeHtml(item.source_location) : '来源：旅行记忆'}</p>
+                    <p class="text-xs text-gray-400 mt-1">${item.source_location ? '关联地点：' + escapeHtml(item.source_location) : (item.location ? '关联地点：' + escapeHtml(item.location) : '来源：旅行记忆')}</p>
+                    <p class="text-[10px] text-[#8d7f73] mt-1 leading-snug px-2">${escapeHtml(ui.hint)}</p>
                 </div>
                 ${unlockReasonHtml}
                 ${actionBtn}
@@ -8032,8 +8204,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             <div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
                 <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
                 ${reward.image ? `<img src="${reward.image}" alt="${escapeHtml(reward.name || '纪念品')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
-                <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 text-white"><i class="ph-fill ph-sparkle text-[8px]"></i> AI</span>
-                <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.name || 'AI 纪念品')}</span>
+                <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-violet-100 text-violet-800 border border-violet-200"><i class="ph-fill ph-paint-brush text-[8px]"></i> 日常灵感</span>
+                <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.name || '灵感小物')}</span>
             </div>`;
             }
             return '';
@@ -9696,95 +9868,116 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
     function renderCabinetGrid() {
         if (!cabinetGrid) return;
+        hydrateCabinetAssetMeta();
         cabinetGrid.className = 'cabinet-shelf flex flex-col gap-2 min-h-[240px]';
         const list = appState.cabinetItems || [];
-        const byTier = groupCabinetByTier(list);
-        
-        // 增加顶部 Tab 切换
+        const part = partitionCabinetForDisplay(list);
+
         let tabs = document.getElementById('cabinet-tabs');
+        if (tabs && tabs.querySelectorAll('button[data-tab]').length < 4) {
+            tabs.remove();
+            tabs = null;
+        }
         if (!tabs) {
             tabs = document.createElement('div');
             tabs.id = 'cabinet-tabs';
-            tabs.className = 'flex gap-2 mb-3 px-1 sticky top-0 bg-[#fffaf0] z-20 pb-2'; // sticky 确保不被滚动遮挡
+            tabs.dataset.cabinetPetView = 'all';
+            tabs.className = 'flex flex-wrap gap-1.5 mb-3 px-1 sticky top-0 bg-[#fffaf0] z-20 pb-2';
             tabs.innerHTML = `
-                <button class="flex-1 py-1.5 rounded-lg bg-[#ff8fab] text-white text-xs font-bold shadow-sm transition-all" data-tab="all">全部</button>
-                <button class="flex-1 py-1.5 rounded-lg bg-white text-gray-500 text-xs font-bold border border-gray-200 shadow-sm transition-all" data-tab="furniture">家具</button>
+                <button type="button" class="flex-1 min-w-[4.25rem] py-1.5 rounded-lg bg-[#ff8fab] text-white text-[11px] font-bold shadow-sm transition-all" data-tab="all">全部</button>
+                <button type="button" class="flex-1 min-w-[4.25rem] py-1.5 rounded-lg bg-white text-gray-500 text-[11px] font-bold border border-gray-200 shadow-sm transition-all" data-tab="prestige">典藏</button>
+                <button type="button" class="flex-1 min-w-[4.25rem] py-1.5 rounded-lg bg-white text-gray-500 text-[11px] font-bold border border-gray-200 shadow-sm transition-all" data-tab="travel">见闻</button>
+                <button type="button" class="flex-1 min-w-[4.25rem] py-1.5 rounded-lg bg-white text-gray-500 text-[11px] font-bold border border-gray-200 shadow-sm transition-all" data-tab="inspired">灵感</button>
             `;
-            // 将 Tab 插入到 cabinetGrid 之前，确保在容器内
             if (cabinetGrid.parentNode) {
                 cabinetGrid.parentNode.insertBefore(tabs, cabinetGrid);
             }
-            
-            // Tab 切换逻辑
             tabs.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
-                    const mode = e.target.dataset.tab;
-                    // 更新按钮样式
-                    tabs.querySelectorAll('button').forEach(b => {
-                        if (b.dataset.tab === mode) {
-                            b.className = 'flex-1 py-1.5 rounded-lg bg-[#ff8fab] text-white text-xs font-bold shadow-sm transition-all';
-                        } else {
-                            b.className = 'flex-1 py-1.5 rounded-lg bg-white text-gray-500 text-xs font-bold border border-gray-200 shadow-sm transition-all';
-                        }
-                    });
-                    renderCabinetGrid(mode);
-                }
+                const btn = e.target.closest('button[data-tab]');
+                if (!btn) return;
+                const mode = btn.getAttribute('data-tab');
+                tabs.dataset.cabinetPetView = mode;
+                tabs.querySelectorAll('button[data-tab]').forEach((b) => {
+                    const on = b.getAttribute('data-tab') === mode;
+                    b.className = 'flex-1 min-w-[4.25rem] py-1.5 rounded-lg text-[11px] font-bold shadow-sm transition-all ' + (on ? 'bg-[#ff8fab] text-white' : 'bg-white text-gray-500 border border-gray-200');
+                });
+                renderCabinetGrid(mode);
             });
         }
 
-        const mode = arguments[0] || 'all'; // 默认显示全部
+        const pageView = arguments[0] || tabs.dataset.cabinetPetView || 'all';
+        tabs.dataset.cabinetPetView = pageView;
+        tabs.querySelectorAll('button[data-tab]').forEach((b) => {
+            const on = b.getAttribute('data-tab') === pageView;
+            b.className = 'flex-1 min-w-[4.25rem] py-1.5 rounded-lg text-[11px] font-bold shadow-sm transition-all ' + (on ? 'bg-[#ff8fab] text-white' : 'bg-white text-gray-500 border border-gray-200');
+        });
 
         const tierCols = { S: 2, A: 3, B: 3, C: 4 };
-        let html = '';
-        ['S', 'A', 'B', 'C'].forEach((tier) => {
-            const allGroup = byTier[tier] || [];
-            // 根据 Tab 过滤，仅决定要展示哪些真实物品
-            const group = mode === 'furniture'
-                ? allGroup.filter(g => g.item && g.item.type === 'furniture')
-                : allGroup;
 
-            const tc = TIER_CONFIG[tier] || TIER_CONFIG.C;
-            const tierClass = tc.class;
-            const cols = tierCols[tier] || 4;
-            const filledCount = group.length;
-
-            html += `<div><div class="text-[10px] font-bold text-[#5c4a3a] mb-2 flex items-center gap-1"><span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] ${tierClass}"><i class="ph-fill ${tc.icon} text-[9px]"></i> ${tc.label}</span></div><div class="grid gap-2" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr));">`;
-
-            // 仅按实际物品数量渲染卡片，不再用固定 slots 和大量占位符填满
-            group.forEach(({ item, origIdx }) => {
-                if (!item || !(item.scene || item.location || item.type === 'furniture')) return;
-                    let imgHtml = '';
-                    let fallbackHtml = '';
-                    let fullLabel = '';
-                    let shortLabel = '';
-                    const isAiFurniture = item.type === 'furniture' && (item.ai_generated !== false);
-                    // 分组视图下 tier 由标题体现，仅家具显示 AI 徽章，场景不显示
-                    const badgeHtml = isAiFurniture
-                        ? `<span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 text-white"><i class="ph-fill ph-sparkle text-[8px]"></i> AI</span>`
-                        : '';
-                    
-                    if (item.type === 'furniture') {
-                        fullLabel = item.name;
-                        shortLabel = item.name;
-                        imgHtml = `<img src="${item.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm">`;
-                    } else {
-                        const scene = item.scene;
-                        const { short, full } = getShortLabel(item);
-                        fullLabel = full;
-                        shortLabel = short;
-                        imgHtml = scene ? `<img src="${scene.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
-                        fallbackHtml = scene ? `<span class="text-2xl hidden">🧳</span>` : `<span class="text-2xl">🧳</span>`;
-                    }
-
-                    html += `<div class="cabinet-slot relative cursor-pointer" data-cabinet-item="true" data-item-index="${origIdx}">${badgeHtml ? `<div class="absolute top-1 right-1 z-10">${badgeHtml}</div>` : ''}<div class="cabinet-slot__media">${imgHtml}${fallbackHtml}</div><span class="font-bold w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span></div>`;
-            });
-
-            // 若整个品阶完全为空，可选地插入一个占位提示，但不再铺满整行
-            if (filledCount === 0) {
-                html += cabinetPlaceholderHTML;
+        function petPageSlotCard(entry) {
+            const { item, origIdx } = entry;
+            if (!item || !(item.scene || item.location || item.type === 'furniture')) return '';
+            const badgeCorner = `<div class="absolute top-1 right-1 z-10">${cabinetSourceBadgeHtml(item, 'sm')}</div>`;
+            let imgHtml = '';
+            let fallbackHtml = '';
+            let fullLabel = '';
+            let shortLabel = '';
+            if (item.type === 'furniture') {
+                fullLabel = item.name;
+                shortLabel = item.name;
+                imgHtml = `<img src="${item.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm">`;
+            } else {
+                const scene = item.scene;
+                const sl = getShortLabel(item);
+                fullLabel = sl.full;
+                shortLabel = sl.short;
+                imgHtml = scene ? `<img src="${scene.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
+                fallbackHtml = scene ? `<span class="text-2xl hidden">🧳</span>` : `<span class="text-2xl">🧳</span>`;
             }
+            return `<div class="cabinet-slot relative cursor-pointer" data-cabinet-item="true" data-item-index="${origIdx}">${badgeCorner}<div class="cabinet-slot__media">${imgHtml}${fallbackHtml}</div><span class="font-bold w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span></div>`;
+        }
+
+        function tierBandsHtml(byTierObj) {
+            let h = '';
+            ['S', 'A', 'B', 'C'].forEach((tier) => {
+                const group = byTierObj[tier] || [];
+                const tc = TIER_CONFIG[tier] || TIER_CONFIG.C;
+                const tierClass = tc.class;
+                const cols = tierCols[tier] || 4;
+                const filledCount = group.length;
+                h += `<div><div class="text-[10px] font-bold text-[#5c4a3a] mb-2 flex items-center gap-1"><span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] ${tierClass}"><i class="ph-fill ${tc.icon} text-[9px]"></i> ${tc.label}</span></div><div class="grid gap-2" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr));">`;
+                group.forEach((e) => { h += petPageSlotCard(e); });
+                if (filledCount === 0) h += cabinetPlaceholderHTML;
+                h += '</div></div>';
+            });
+            return h;
+        }
+
+        let html = '';
+        if (pageView === 'prestige') {
+            html += `<div class="text-[10px] font-bold text-amber-900 mb-2">典藏与限定</div><div class="grid gap-2 grid-cols-4">`;
+            part.prestige.forEach((e) => { html += petPageSlotCard(e); });
+            if (part.prestige.length === 0) html += `<div class="col-span-4 text-[10px] text-[#8d7f73] py-3 text-center">暂无典藏款，多出门走走或关注活动吧</div>`;
+            html += '</div>';
+        } else if (pageView === 'inspired') {
+            html += `<div class="text-[10px] font-bold text-violet-900 mb-2">日常灵感 · AI</div><div class="grid gap-2 grid-cols-4">`;
+            part.aiDaily.forEach((e) => { html += petPageSlotCard(e); });
+            if (part.aiDaily.length === 0) html += `<div class="col-span-4 text-[10px] text-[#8d7f73] py-3 text-center">打卡生成日记后可收纳灵感小物</div>`;
+            html += '</div>';
+        } else if (pageView === 'travel') {
+            html += tierBandsHtml(part.byTier);
+        } else {
+            html += `<div class="cabinet-section-prestige mb-2"><div class="text-[10px] font-bold text-amber-900 mb-1">典藏与限定</div><div class="grid gap-2 grid-cols-4">`;
+            part.prestige.forEach((e) => { html += petPageSlotCard(e); });
+            if (part.prestige.length === 0) html += `<div class="col-span-4 text-[9px] text-[#8d7f73] py-1">暂无典藏款</div>`;
             html += '</div></div>';
-        });
+            html += tierBandsHtml(part.byTier);
+            html += `<div class="cabinet-section-daily mt-2"><div class="text-[10px] font-bold text-violet-900 mb-1">日常灵感收纳</div><div class="grid gap-2 grid-cols-4">`;
+            part.aiDaily.forEach((e) => { html += petPageSlotCard(e); });
+            if (part.aiDaily.length === 0) html += `<div class="col-span-4 text-[9px] text-[#8d7f73] py-1">暂无灵感小物</div>`;
+            html += '</div></div>';
+        }
+
         cabinetGrid.innerHTML = html;
     }
 
@@ -9871,8 +10064,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                                 ? `<div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
                                         <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
                                         ${reward.image ? `<img src="${reward.image}" alt="${escapeHtml(reward.name || '纪念品')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
-                                        <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 text-white"><i class="ph-fill ph-sparkle text-[8px]"></i> AI</span>
-                                        <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.name || 'AI 纪念品')}</span>
+                                        <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-violet-100 text-violet-800 border border-violet-200"><i class="ph-fill ph-paint-brush text-[8px]"></i> 日常灵感</span>
+                                        <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.name || '灵感小物')}</span>
                                    </div>`
                                 : ''
                         }
@@ -9953,7 +10146,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const tier = tierOverride || (scene && scene.tier) || 'C';
         const source = sourceOverride || (scene && scene.source) || 'checkin';
         const collectCategory = resolveCollectCategoryFromScene(scene);
-        appState.cabinetItems.unshift({ location, scene, tier, source, collectCategory });
+        const assetSource = pickAssetSourceForNewSceneItem(sourceOverride, scene);
+        const scarcity = PRESTIGE_ASSET_SOURCES.has(assetSource) ? ASSET_SCARCITY.LIMITED : ASSET_SCARCITY.UNLIMITED;
+        appState.cabinetItems.unshift({ location, scene, tier, source, collectCategory, assetSource, scarcity });
         appState.cabinetHasNewUnseen = true;
         renderCabinetGrid();
         renderMemoryWall(); // 同步更新墙面
@@ -10104,7 +10299,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             name,
             image,
             tier: 'C',
-            source_location: (apiData && apiData.source_location) ? String(apiData.source_location) : (locationHint || '')
+            source_location: (apiData && apiData.source_location) ? String(apiData.source_location) : (locationHint || ''),
+            assetSource: (apiData && apiData.assetSource) ? String(apiData.assetSource) : ASSET_SOURCE.AI_DAILY,
+            scarcity: (apiData && apiData.scarcity) ? String(apiData.scarcity) : ASSET_SCARCITY.SOFT_CAPPED
         };
         rec.scene = null;
         rec.scene_label = null;
@@ -10133,7 +10330,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             craftingStatus.innerHTML = `
                 <div class="animate-spin text-lg">🔨</div>
                 <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-500 font-bold leading-none">宠物正在制作纪念品...</span>
+                    <span class="text-[10px] text-gray-500 font-bold leading-none">正在根据回忆做一件小装饰…</span>
                     <div class="w-24 h-1 bg-gray-200 rounded-full mt-1 overflow-hidden">
                         <div id="crafting-status-progress" class="h-full bg-[#ff8fab] w-0 transition-all duration-500"></div>
                     </div>
@@ -10219,6 +10416,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const hintEl = document.getElementById('reward-vibration-hint');
         const badgesEl = document.getElementById('reward-badges');
 
+        if (panel) panel.classList.remove('ui-reward-panel--daily');
+
             const isScene = item.scene && (item.scene.image || item.scene.label);
         if (isScene) {
                 const ragSource = item.ragSource && typeof item.ragSource === 'object' ? item.ragSource : null;
@@ -10226,7 +10425,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     location: item.location,
                     scene: item.scene,
                     tier: item.tier || 'C',
-                    source: ragSource || item.source || 'checkin'
+                    source: ragSource || item.source || 'checkin',
+                    assetSource: item.assetSource || ASSET_SOURCE.TRAVEL_SCENE,
+                    scarcity: item.scarcity || ASSET_SCARCITY.UNLIMITED
                 };
             currentRewardItem._alreadyInCabinet = true;
             if (titleEl) titleEl.textContent = '✨ 解锁远行场景 ✨';
@@ -10256,6 +10457,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
             triggerVibration('item_obtained');
         } else {
+            const assetSrc = (item && item.assetSource) ? String(item.assetSource) : ASSET_SOURCE.AI_DAILY;
+            const scarcityVal = (item && item.scarcity) ? String(item.scarcity) : ASSET_SCARCITY.SOFT_CAPPED;
             currentRewardItem = {
                 id: 'furniture_' + Date.now(),
                 type: 'furniture',
@@ -10265,14 +10468,22 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 date: new Date().toLocaleDateString('zh-CN'),
                 tier: 'C',
                 ai_generated: true,
-                collectCategory: COLLECT_CATEGORY_FALLBACK_ID
+                collectCategory: COLLECT_CATEGORY_FALLBACK_ID,
+                assetSource: assetSrc,
+                scarcity: scarcityVal
             };
-            if (titleEl) titleEl.textContent = '✨ 获得新家具 ✨';
+            if (panel) panel.classList.add('ui-reward-panel--daily');
+            if (titleEl) titleEl.textContent = '收到一件灵感小物';
             img.src = item.image_url;
             name.textContent = item.item_name || '神秘纪念品';
-            if (badgesEl) badgesEl.innerHTML = `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 text-white"><i class="ph-fill ph-sparkle text-[10px]"></i> AI 生成</span>`;
-            if (hintEl) hintEl.textContent = '小爪子都震了一下～';
-            triggerVibration('item_obtained');
+            if (badgesEl) {
+                const ui = ASSET_SOURCE_UI.ai_daily;
+                badgesEl.innerHTML = `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold ${ui.badgeClass}"><i class="ph-fill ph-paint-brush text-[10px]"></i> 日常灵感</span>`;
+            }
+            if (hintEl) {
+                hintEl.textContent = '宠物根据这次回忆随手做的小装饰，随时还能再做新的～真正特别的款式来自你的生活与线下相遇。';
+            }
+            triggerVibration('item_obtained_soft');
         }
 
         modal.classList.remove('hidden');
@@ -10301,6 +10512,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     function closeRewardModal() {
         const modal = document.getElementById('reward-modal');
         const panel = document.getElementById('reward-panel');
+        if (panel) panel.classList.remove('ui-reward-panel--daily');
         panel.classList.remove('scale-100', 'opacity-100');
         panel.classList.add('scale-95', 'opacity-0');
         setTimeout(() => {

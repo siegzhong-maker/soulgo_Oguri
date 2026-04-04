@@ -3,7 +3,7 @@
  * Vercel Serverless Function: Generate furniture asset using OpenRouter API.
  * 
  * Input: { "location": "string", "diary_excerpt": "string", "city": "string" }
- * Output: { "image_url": "string", "item_name": "string" }
+ * Output: { "image_url": "string", "item_name": "string", "assetSource": "ai_daily", "scarcity": "soft_capped", "source_location": "string" }
  */
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -123,9 +123,12 @@ export async function POST(request) {
         }
 
         return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
                 image_url: imageUrl,
-                item_name: itemName 
+                item_name: itemName,
+                assetSource: 'ai_daily',
+                scarcity: 'soft_capped',
+                source_location: String(location || '').trim()
             }),
             { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
