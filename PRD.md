@@ -152,6 +152,13 @@ F-2.03 素材分层（低门槛 + 高上限）：
 
 橱柜列表与弹层需支持按分区浏览（全部 / 典藏 / 见闻稀有度 / 日常灵感），图鉴矩阵横轴「稀有度」主要解释旅行场景与典藏线；日常 AI 件落在普通格并可在说明文案中注明与典藏的区别。
 
+F-2.04 收集物详情与图鉴百科（爱好驱动）：
+
+- **详情弹层**：用户点击橱柜格子或图鉴矩阵中已解锁格，进入统一详情视图；除名称、稀有度、来源与关联地点外，需支持**短介绍（intro）**、**标签（tags）**、可折叠的**更多信息（facts / 相关知识点）**；静态场景素材可由配置表维护，后续可扩展为 AI 写入字段。
+- **图鉴矩阵**：未解锁格展示明确的「未解锁 / 打卡收集」占位，强化逐个点亮的心智；可按当前电子宠物的**爱好主题**高亮对应品类行，并展示该主题在 S/A/B/C 四档稀有度上的**点亮进度**（例如「已点亮 2/4 格」）。
+- **爱好与掉落**：每个宠物人格除「性格」外配置**爱好主题（hobbyLabel）**与 **collectionFocus（品类权重）**；旅行打卡掉落场景纪念品时，对匹配品类的候选**加权随机**，而非硬过滤，避免玩法过窄；典藏 / NFC 等轨道仍遵循 F-2.03 分层规则。
+- **地图与入口**：在中国手绘地图阶段，**不依赖**地图上图钉/热点的精确锚点作为详情入口（避免底图与坐标难对齐）；「地点 ↔ 代表物 ↔ 介绍」以**橱柜、图鉴矩阵、日记与地点列表**为主路径。
+
 3.3 二级页面：旅行日记模块
 
 需求目的： 强化IP陪伴感，将冰冷的地理位置转化为有温度的日记。
@@ -396,19 +403,20 @@ Won't have (本次没有)
 - `User`：用户
   - userId、昵称、头像、注册时间等。
 - `PetProfile`：电子宠物档案
-  - petId、所属 userId、当前性格（petPersonality）、创建时间。
+  - petId、所属 userId、当前性格（petPersonality）、**爱好展示名（hobbyLabel，可选）**、**收集主题配置（collectionFocus：primary 品类 + 各 collectCategory 权重，可选）**、创建时间。
 - `CheckIn`：打卡记录
   - checkInId、userId、petId、locationName、createdAt、userNote（可选）、生成状态（待生成/生成中/已生成/失败）。
 - `DiaryEntry`：日记条目
   - diaryId、userId、petId、checkInId、title、content、moodTag、createdAt、来源类型（AI/模板）。
 - `CabinetItem`：橱柜配件
-  - itemId、userId、imageUrl（或本地标识）、displayName、relatedLocation（可选）、createdAt。
+  - itemId、userId、imageUrl（或本地标识）、displayName、relatedLocation（可选）、**关联场景元数据（如 intro、facts[]、tags[]、regionLabel，可与静态图鉴表合并维护）**、稀有度 tier、来源 assetSource、createdAt。
 
 7.2 状态流转（简要）
 
 - 打卡状态流：未打卡 -> 用户输入地名并点击打卡 -> 创建 CheckIn（状态：待生成）-> 触发 AI -> 成功则创建 DiaryEntry 并将 CheckIn 状态更新为“已生成”；失败则标记为“失败”，可提供重试能力。
 - 日记展示流：当用户进入“日记”页面时，按 DiaryEntry 的 createdAt 倒序加载，最新记录在顶部。
 - 宠物性格影响范围：仅影响**打卡之后新生成的日记**，不回溯修改历史日记。
+- 爱好 / collectionFocus 影响范围：影响**此后打卡触发的场景纪念品掉落抽样权重**与图鉴 UI 主题高亮；不修改历史已获得的橱柜条目。
 
 8. 非功能需求与埋点（NFR）
 

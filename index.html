@@ -420,13 +420,31 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 0;
+            gap: 2px;
             color: #8d7f73;
             font-size: 9px;
             text-align: center;
             line-height: 1.35;
             padding: 6px 4px;
             pointer-events: none;
+        }
+        .cabinet-modal .collect-matrix-cell--empty__q {
+            font-size: 14px;
+            line-height: 1;
+            opacity: 0.55;
+            color: #b85c6f;
+        }
+        .cabinet-modal .collect-matrix-table tbody tr.collect-matrix-row--focus td.collect-matrix-cat {
+            background: rgba(255, 143, 171, 0.14) !important;
+            color: #9d174d;
+            font-weight: 800;
+        }
+        .cabinet-modal .collect-matrix-table tbody tr.collect-matrix-row--focus td.collect-matrix-cell-td {
+            background: rgba(255, 143, 171, 0.06);
+        }
+        .cabinet-modal .collect-matrix-compact-cat--focus {
+            box-shadow: 0 0 0 2px rgba(255, 143, 171, 0.45);
+            border-color: #ffb3c6 !important;
         }
         .cabinet-modal .collect-matrix-tier-head {
             display: inline-flex;
@@ -2755,6 +2773,11 @@
             energy: 'extrovert',
             emotion: 'emotional',
             desc: '美食森林系、奶油杏色、爱分享',
+            hobbyLabel: '美食与味道',
+            collectionFocus: {
+                primary: 'food',
+                weights: { food: 2.25, plants: 0.95, birds_nature: 0.95, sculpture: 0.85, bedding: 0.85, souvenir: 0.9, wall_art: 1, music: 1 }
+            },
             promptDesc: '住在森林里、爱尝遍世界美食；好奇味道、珍惜食物、讨厌浪费；温柔口语，常说「要尝尝吗？」「这个味道是阳光的味道！」；分享时很开心，耳朵会抖、尾巴会蓬松。',
             wordiness: 'chatter',
             colorFilter: 'brightness(1.06) saturate(1.05) hue-rotate(15deg)',
@@ -2781,6 +2804,11 @@
             energy: 'extrovert', // 外向
             emotion: 'rational', // 理性
             desc: '好奇、自信、明亮科技感',
+            hobbyLabel: '城市与地标',
+            collectionFocus: {
+                primary: 'sculpture',
+                weights: { sculpture: 2.2, food: 0.95, plants: 0.85, birds_nature: 0.88, bedding: 0.9, souvenir: 1.05, wall_art: 1, music: 1 }
+            },
             promptDesc: '理性、好奇、极客范。喜欢分析事物背后的逻辑，关注效率，语气自信但带一点书呆子气。',
             wordiness: 'chatter', // 话多，但更理性
             colorFilter: 'brightness(1.2) saturate(1.2) hue-rotate(45deg)', // 明亮黄色调
@@ -2807,6 +2835,11 @@
             energy: 'introvert', // 内向
             emotion: 'emotional', // 感性
             desc: '温柔、敏感、马卡龙色',
+            hobbyLabel: '花草与自然',
+            collectionFocus: {
+                primary: 'plants',
+                weights: { plants: 2.1, birds_nature: 1.85, food: 0.8, sculpture: 0.82, bedding: 0.95, souvenir: 0.9, wall_art: 1, music: 1 }
+            },
             promptDesc: '感性、温柔、内向。心思细腻，喜欢观察微小的美好，语气软糯，容易害羞或发呆。',
             wordiness: 'quiet', // 安静、句子更短
             colorFilter: 'brightness(1.05) saturate(0.8) hue-rotate(200deg)', // 柔和粉/紫色调
@@ -2833,6 +2866,11 @@
             energy: 'introvert', // 内向
             emotion: 'rational', // 理性
             desc: '沉稳、冷幽默、极简冷色',
+            hobbyLabel: '纪念与足迹',
+            collectionFocus: {
+                primary: 'souvenir',
+                weights: { souvenir: 1.75, sculpture: 1.15, food: 0.88, plants: 0.9, birds_nature: 0.9, bedding: 1, wall_art: 1, music: 1 }
+            },
             promptDesc: '理性、内向、沉稳。话少，冷幽默，情绪波动小，喜欢用简短的句子，给人安全感。',
             wordiness: 'balanced', // 话不多不少
             colorFilter: 'grayscale(0.6) brightness(0.9) contrast(1.1)', // 冷灰/蓝色调
@@ -2886,7 +2924,9 @@
         if (!summaryEl) return;
         const personalityKey = appState.petPersonality || '小粟';
         const title = getOwnerTitle();
-        summaryEl.textContent = `人格：${personalityKey} · 称呼你：${title}`;
+        const pCfg = PERSONALITY_TYPES[personalityKey] || {};
+        const hobbyLine = pCfg.hobbyLabel ? ` · 爱好：${pCfg.hobbyLabel}` : '';
+        summaryEl.textContent = `人格：${personalityKey}${hobbyLine} · 称呼你：${title}`;
     }
 
     function updatePetHowtoHintVisibility() {
@@ -4546,29 +4586,29 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     // --- 场景素材：中国地点固定映射 + 非中国地点隐藏款 + NFC 预设 ---
     // 中国地点（key 按具体优先，先匹配广州再匹配广东），每项带 tier、source、可选 memoryTag（用于和记忆主题对齐）
     const sceneAssets = {
-        '北京':   { image: '场景/北京-糖葫芦.png',   label: '北京·糖葫芦', tier: 'B', source: 'checkin', memoryTag: 'beijing_snack', collectCategory: 'food' },
-        '广州':   { image: '场景/广州-早茶.png',    label: '广州·早茶', tier: 'B', source: 'checkin', collectCategory: 'food' },
-        '广东':   { image: '场景/广州-早茶.png',    label: '广州·早茶', tier: 'B', source: 'checkin', collectCategory: 'food' },
-        '上海':   { image: '场景/上海—大白兔.png', label: '上海·大白兔', tier: 'B', source: 'checkin', collectCategory: 'food' },
-        '深圳':   { image: '场景/深圳—簕杜鹃.png',  label: '深圳·簕杜鹃', tier: 'B', source: 'checkin', collectCategory: 'plants' },
-        '成都':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫', tier: 'B', source: 'checkin', collectCategory: 'birds_nature' },
-        '四川':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫', tier: 'B', source: 'checkin', collectCategory: 'birds_nature' },
-        '杭州':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒', tier: 'B', source: 'checkin', collectCategory: 'food' },
-        '浙江':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒', tier: 'B', source: 'checkin', collectCategory: 'food' }
+        '北京':   { image: '场景/北京-糖葫芦.png',   label: '北京·糖葫芦', tier: 'B', source: 'checkin', memoryTag: 'beijing_snack', collectCategory: 'food', regionLabel: '北京', intro: '冰糖葫芦是北方冬天最甜的一串记忆，山楂裹着琥珀色糖衣，咬下去咔嚓一声。', facts: ['常与庙会、胡同小摊联系在一起', '红色串儿在雪天里特别上镜'], tags: ['京味', '街头小吃', '甜食'] },
+        '广州':   { image: '场景/广州-早茶.png',    label: '广州·早茶', tier: 'B', source: 'checkin', collectCategory: 'food', regionLabel: '广东', intro: '一盅两件，慢火蒸出岭南的早晨；虾饺、烧卖、凤爪都是「得闲饮茶」的暗号。', facts: ['早茶文化列入城市生活方式', '点心按季换新'], tags: ['粤菜', '早茶', '社交'] },
+        '广东':   { image: '场景/广州-早茶.png',    label: '广州·早茶', tier: 'B', source: 'checkin', collectCategory: 'food', regionLabel: '广东', intro: '一盅两件，慢火蒸出岭南的早晨；虾饺、烧卖、凤爪都是「得闲饮茶」的暗号。', facts: ['早茶文化列入城市生活方式', '点心按季换新'], tags: ['粤菜', '早茶', '社交'] },
+        '上海':   { image: '场景/上海—大白兔.png', label: '上海·大白兔', tier: 'B', source: 'checkin', collectCategory: 'food', regionLabel: '上海', intro: '蓝白糖纸里裹着奶香，是几代人口袋里的童年味道，也是海派甜品的温柔代表。', facts: ['经典奶糖品牌起源于上海', '常作伴手礼'], tags: ['奶糖', '怀旧', '伴手礼'] },
+        '深圳':   { image: '场景/深圳—簕杜鹃.png',  label: '深圳·簕杜鹃', tier: 'B', source: 'checkin', collectCategory: 'plants', regionLabel: '广东', intro: '簕杜鹃（三角梅）耐热耐晒，在城市高架与阳台盛开成一片，像给钢筋水泥镶了花边。', facts: ['深圳常见市花意象', '花期长、色彩艳'], tags: ['市花', '热带花卉', '阳台'] },
+        '成都':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫', tier: 'B', source: 'checkin', collectCategory: 'birds_nature', regionLabel: '四川', intro: '黑白团子是四川最软萌的名片，吃竹子的慢节奏治愈了无数赶路人。', facts: ['大熊猫保护与研究基地多在川陕', '形象广泛用于公益与旅游'], tags: ['熊猫', '自然', '治愈'] },
+        '四川':   { image: '场景/四川—熊猫.png',  label: '四川·熊猫', tier: 'B', source: 'checkin', collectCategory: 'birds_nature', regionLabel: '四川', intro: '黑白团子是四川最软萌的名片，吃竹子的慢节奏治愈了无数赶路人。', facts: ['大熊猫保护与研究基地多在川陕', '形象广泛用于公益与旅游'], tags: ['熊猫', '自然', '治愈'] },
+        '杭州':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒', tier: 'B', source: 'checkin', collectCategory: 'food', regionLabel: '浙江', intro: '端午时节的民俗之味，与白蛇传说绑在一起，带着一点辛辣与仪式感。', facts: ['传统节令饮品意象', '现代多作文化符号'], tags: ['端午', '民俗', '黄酒'] },
+        '浙江':   { image: '场景/浙江—雄黄酒.png', label: '浙江·雄黄酒', tier: 'B', source: 'checkin', collectCategory: 'food', regionLabel: '浙江', intro: '端午时节的民俗之味，与白蛇传说绑在一起，带着一点辛辣与仪式感。', facts: ['传统节令饮品意象', '现代多作文化符号'], tags: ['端午', '民俗', '黄酒'] }
     };
     const sceneAssetsKeyOrder = ['北京', '广州', '广东', '上海', '深圳', '成都', '四川', '杭州', '浙江'];
 
     const hiddenSceneAssets = [
-        { image: '场景/埃及金字塔.png',   label: '隐藏款 · 埃及金字塔', tier: 'A', source: 'checkin', memoryTag: 'egypt_pyramid', collectCategory: 'sculpture' },
-        { image: '场景/埃菲尔铁塔.png',   label: '隐藏款 · 埃菲尔铁塔', tier: 'A', source: 'checkin', memoryTag: 'paris_tower', collectCategory: 'sculpture' },
-        { image: '场景/自由女神像.png',   label: '隐藏款 · 自由女神像', tier: 'A', source: 'checkin', memoryTag: 'ny_statue', collectCategory: 'sculpture' }
+        { image: '场景/埃及金字塔.png',   label: '隐藏款 · 埃及金字塔', tier: 'A', source: 'checkin', memoryTag: 'egypt_pyramid', collectCategory: 'sculpture', regionLabel: '埃及', intro: '沙漠与尼罗河之间，人类用巨石写下对永恒的想象；金字塔是旅行清单里绕不开的地标。', facts: ['吉萨高原的陵墓建筑群', '古代工程奇迹之一'], tags: ['世界遗产', '沙漠', '古文明'] },
+        { image: '场景/埃菲尔铁塔.png',   label: '隐藏款 · 埃菲尔铁塔', tier: 'A', source: 'checkin', memoryTag: 'paris_tower', collectCategory: 'sculpture', regionLabel: '法国', intro: '铁 lattice 撑起巴黎的天际线，夜晚亮灯时整座城市像在轻轻呼吸。', facts: ['1889 年世界博览会象征', '登顶可俯瞰塞纳河'], tags: ['巴黎', '地标', '夜景'] },
+        { image: '场景/自由女神像.png',   label: '隐藏款 · 自由女神像', tier: 'A', source: 'checkin', memoryTag: 'ny_statue', collectCategory: 'sculpture', regionLabel: '美国', intro: '高举火炬的轮廓，成了海港与移民记忆里「新大陆」的剪影。', facts: ['位于纽约港自由岛', '法美友谊的象征'], tags: ['纽约', '海港', '雕塑'] }
     ];
 
     const nfcPresetAssets = [
-        { image: '场景/星巴克.svg', label: '星巴克', tier: 'S', source: 'nfc', memoryTag: 'starbucks', collectCategory: 'food' },
-        { image: '场景/麦当劳.svg', label: '麦当劳', tier: 'S', source: 'nfc', memoryTag: 'mcdonalds', collectCategory: 'food' },
-        { image: '场景/labubu.svg', label: 'labubu', tier: 'S', source: 'nfc', memoryTag: 'labubu', collectCategory: 'sculpture' },
-        { image: '场景/兔子.svg', label: '兔子', tier: 'S', source: 'nfc', memoryTag: 'rabbit', collectCategory: 'birds_nature' }
+        { image: '场景/星巴克.svg', label: '星巴克', tier: 'S', source: 'nfc', memoryTag: 'starbucks', collectCategory: 'food', regionLabel: '线下门店', intro: '一杯咖啡的香气，常常是城市街角最稳定的坐标；打卡、办公、等人，都在这里发生。', facts: ['全球连锁咖啡品牌', '常作城市第三空间'], tags: ['咖啡', 'NFC', '社交'] },
+        { image: '场景/麦当劳.svg', label: '麦当劳', tier: 'S', source: 'nfc', memoryTag: 'mcdonalds', collectCategory: 'food', regionLabel: '线下门店', intro: '金拱门下的薯条与甜筒，是赶路时的快充站，也是童年奖励的味道。', facts: ['快餐文化符号之一', '门店 NFC 可触发限定互动'], tags: ['快餐', 'NFC', '童年'] },
+        { image: '场景/labubu.svg', label: 'labubu', tier: 'S', source: 'nfc', memoryTag: 'labubu', collectCategory: 'sculpture', regionLabel: '潮玩', intro: '尖耳朵、小獠牙，却越看越顺眼——潮玩把收藏欲变成可触摸的情绪陪伴。', facts: ['潮流 IP 形象', '常与盲盒、联名活动结合'], tags: ['潮玩', '盲盒', '收藏'] },
+        { image: '场景/兔子.svg', label: '兔子', tier: 'S', source: 'nfc', memoryTag: 'rabbit', collectCategory: 'birds_nature', regionLabel: '玩偶', intro: '柔软绒毛与长耳朵，是陪伴感最朴素的形状；适合被揣在怀里去旅行。', facts: ['常见于毛绒与文创周边', '与 Soulgo 旅行宠物气质相近'], tags: ['毛绒', '陪伴', 'NFC'] }
     ];
 
     const SCENE_LABEL_TO_COLLECT_CATEGORY = (() => {
@@ -4581,6 +4621,29 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         nfcPresetAssets.forEach(add);
         return map;
     })();
+
+    /** 按 label 合并静态图鉴元数据（intro / facts / tags），旧存档里 scene 快照缺字段时仍可补全 */
+    const COLLECTIBLE_CATALOG_BY_LABEL = (() => {
+        const m = new Map();
+        function reg(s) {
+            if (s && s.label) m.set(s.label, s);
+        }
+        Object.values(sceneAssets).forEach(reg);
+        hiddenSceneAssets.forEach(reg);
+        nfcPresetAssets.forEach(reg);
+        return m;
+    })();
+
+    function getCollectibleCatalogMeta(scene) {
+        if (!scene || !scene.label) return { intro: '', facts: [], tags: [], regionLabel: '' };
+        const canon = COLLECTIBLE_CATALOG_BY_LABEL.get(scene.label) || scene;
+        return {
+            intro: (canon.intro != null ? canon.intro : scene.intro) || '',
+            facts: Array.isArray(canon.facts) ? canon.facts : (Array.isArray(scene.facts) ? scene.facts : []),
+            tags: Array.isArray(canon.tags) ? canon.tags : (Array.isArray(scene.tags) ? scene.tags : []),
+            regionLabel: (canon.regionLabel != null ? canon.regionLabel : scene.regionLabel) || ''
+        };
+    }
 
     // 国内场景池（去重）
     const domesticScenePool = (() => {
@@ -4657,6 +4720,38 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         C: []
     };
 
+    function getPersonalityCollectionWeights() {
+        const p = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+        if (!p || !p.collectionFocus || typeof p.collectionFocus !== 'object') return null;
+        const w = p.collectionFocus.weights;
+        if (!w || typeof w !== 'object') return null;
+        return w;
+    }
+
+    /** 在候选收集物上按当前人格 collectionFocus 做加权抽样（非硬过滤，避免玩法过窄） */
+    function pickWeightedCollectibleFromPool(available) {
+        if (!available || available.length === 0) return null;
+        const weights = getPersonalityCollectionWeights();
+        if (!weights) {
+            return available[Math.floor(Math.random() * available.length)];
+        }
+        let total = 0;
+        const scored = available.map((s) => {
+            const cat = (s && s.collectCategory) || COLLECT_CATEGORY_FALLBACK_ID;
+            const raw = weights[cat];
+            const weight = typeof raw === 'number' && raw > 0 ? raw : 1;
+            total += weight;
+            return { s, weight };
+        });
+        if (total <= 0) return available[Math.floor(Math.random() * available.length)];
+        let r = Math.random() * total;
+        for (let i = 0; i < scored.length; i++) {
+            r -= scored[i].weight;
+            if (r <= 0) return scored[i].s;
+        }
+        return scored[scored.length - 1].s;
+    }
+
     function normalizeMemoryTag(tag) {
         const raw = String(tag || '').trim().toLowerCase();
         if (!raw) return '';
@@ -4701,11 +4796,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             available = allItems.filter((s) => s && s.label);
         }
         if (available.length === 0) {
-            if (domesticScenePool.length > 0) return domesticScenePool[Math.floor(Math.random() * domesticScenePool.length)];
-            if (hiddenSceneAssets.length > 0) return hiddenSceneAssets[Math.floor(Math.random() * hiddenSceneAssets.length)];
+            if (domesticScenePool.length > 0) return pickWeightedCollectibleFromPool(domesticScenePool);
+            if (hiddenSceneAssets.length > 0) return pickWeightedCollectibleFromPool(hiddenSceneAssets);
             return null;
         }
-        return available[Math.floor(Math.random() * available.length)];
+        return pickWeightedCollectibleFromPool(available);
     }
 
     function getSceneAsset(location) {
@@ -5593,7 +5688,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         if (!entries || entries.length === 0) {
             return `
                 <div class="collect-matrix-cell collect-matrix-cell--empty" aria-hidden="true">
-                    <span>打卡解锁</span>
+                    <span class="collect-matrix-cell--empty__q" aria-hidden="true">?</span>
+                    <span>未解锁</span>
+                    <span class="opacity-80">打卡收集</span>
                 </div>`;
         }
         const indices = entries.map((e) => e.origIdx).join(',');
@@ -5612,7 +5709,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             </button>`;
     }
 
-    function buildCollectMatrixTableHTML(items) {
+    function buildCollectMatrixTableHTML(items, focusCategoryId) {
         const buckets = buildCollectMatrixBuckets(items);
         const tiers = ['S', 'A', 'B', 'C'];
         let head = `<tr><th class="collect-matrix-corner rounded-tl-lg" scope="col"><span class="collect-matrix-corner-label"><span class="collect-matrix-corner-line">纵｜品类</span><span class="collect-matrix-corner-line">横｜稀有度</span></span></th>`;
@@ -5623,8 +5720,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         head += '</tr>';
         let body = '';
         visibleCollectMatrixCategories().forEach((cat, rowIdx) => {
-            const rowClass = rowIdx % 2 === 1 ? ' collect-matrix-row--alt' : '';
-            body += `<tr class="${rowClass}"><td class="collect-matrix-cat line-clamp-3" title="${escapeHtml(cat.label)}">${escapeHtml(cat.label)}</td>`;
+            const rowAlt = rowIdx % 2 === 1 ? ' collect-matrix-row--alt' : '';
+            const rowFocus = focusCategoryId && cat.id === focusCategoryId ? ' collect-matrix-row--focus' : '';
+            body += `<tr class="${rowAlt}${rowFocus}"><td class="collect-matrix-cat line-clamp-3" title="${escapeHtml(cat.label)}">${escapeHtml(cat.label)}</td>`;
             tiers.forEach((tier) => {
                 const entries = (buckets[cat.id] && buckets[cat.id][tier]) || [];
                 body += `<td class="collect-matrix-cell-td">${renderCollectMatrixCellInner(entries, tier)}</td>`;
@@ -5634,12 +5732,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         return `<div class="collect-matrix-wrap no-scrollbar"><table class="collect-matrix-table" role="grid" aria-label="收集图鉴矩阵"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
     }
 
-    function buildCollectMatrixCompactHTML(items) {
+    function buildCollectMatrixCompactHTML(items, focusCategoryId) {
         const buckets = buildCollectMatrixBuckets(items);
         const tiers = ['S', 'A', 'B', 'C'];
         let html = '<div class="flex flex-col gap-2">';
         visibleCollectMatrixCategories().forEach((cat) => {
-            html += `<div class="rounded-xl bg-white/45 border border-[#eaddcf] p-2 shadow-sm"><div class="text-[10px] font-bold text-[#5c4a3a] mb-1.5">${escapeHtml(cat.label)}</div><div class="grid grid-cols-4 gap-1.5">`;
+            const catFocus = focusCategoryId && cat.id === focusCategoryId ? ' collect-matrix-compact-cat--focus' : '';
+            html += `<div class="rounded-xl bg-white/45 border border-[#eaddcf] p-2 shadow-sm${catFocus}"><div class="text-[10px] font-bold text-[#5c4a3a] mb-1.5">${escapeHtml(cat.label)}</div><div class="grid grid-cols-4 gap-1.5">`;
             tiers.forEach((tier) => {
                 const tc = TIER_CONFIG[tier] || TIER_CONFIG.C;
                 const entries = (buckets[cat.id] && buckets[cat.id][tier]) || [];
@@ -5819,8 +5918,22 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                </div>`
             : '';
 
-        const matrixTableHTML = buildCollectMatrixTableHTML(items);
-        const matrixCompactHTML = buildCollectMatrixCompactHTML(items);
+        const pMat = typeof getCurrentPersonality === 'function' ? getCurrentPersonality() : null;
+        const focusCategoryId = (pMat && pMat.collectionFocus && pMat.collectionFocus.primary) ? pMat.collectionFocus.primary : null;
+        const matrixTableHTML = buildCollectMatrixTableHTML(items, focusCategoryId);
+        const matrixCompactHTML = buildCollectMatrixCompactHTML(items, focusCategoryId);
+
+        let hobbyMatrixHintHtml = '';
+        if (pMat && pMat.hobbyLabel && focusCategoryId) {
+            const bucketsH = buildCollectMatrixBuckets(items);
+            const tiersH = ['S', 'A', 'B', 'C'];
+            let lit = 0;
+            tiersH.forEach((t) => {
+                const ent = (bucketsH[focusCategoryId] && bucketsH[focusCategoryId][t]) || [];
+                if (ent.length > 0) lit++;
+            });
+            hobbyMatrixHintHtml = `<p class="text-[10px] text-[#b85c6f] font-bold mb-1 leading-snug">「${escapeHtml(pMat.hobbyLabel)}」图鉴进度：稀有度格 <span class="text-[#5c4a3a]">${lit}</span> / ${tiersH.length} 已点亮 · 多打卡慢慢集齐</p>`;
+        }
 
         const bodyHTML = `
             <div class="flex flex-col h-full px-2">
@@ -5845,6 +5958,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 </div>
 
                 <div id="cabinet-view-matrix" class="cabinet-view-panel is-hidden flex flex-col flex-1 min-h-0 opacity-0 pointer-events-none" aria-hidden="true">
+                    ${hobbyMatrixHintHtml}
                     <div class="text-[10px] text-[#8d7f73] mb-1 leading-snug flex flex-wrap items-center gap-x-1 gap-y-0.5">
                         <span>从左到右越来越稀有 · 从上到下互动越深</span>
                         <button type="button" class="text-[#b85c6f] font-bold underline-offset-2 hover:underline cabinet-matrix-info-toggle" aria-expanded="false">ⓘ</button>
@@ -5978,19 +6092,41 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             ? `<p class="mt-2 text-xs text-[#b85c6f] leading-snug px-4 text-center">「${escapeHtml(ragSource.displayName || fullLabel)}」是因为你在【${escapeHtml(ragSource.relatedLocation || '')}】的一次次打卡，被我郑重收进了这个小柜子。</p>`
             : '';
 
+        let catalogExtraHtml = '';
+        if (item.type !== 'furniture' && item.scene && typeof getCollectibleCatalogMeta === 'function') {
+            const meta = getCollectibleCatalogMeta(item.scene);
+            const region = meta.regionLabel ? `<p class="text-[10px] text-[#b85c6f] font-bold mt-0.5">地区 / 主题：${escapeHtml(meta.regionLabel)}</p>` : '';
+            const introBlock = meta.intro
+                ? `<p class="text-xs text-[#5c4a3a] leading-relaxed mt-2 text-left w-full px-1">${escapeHtml(meta.intro)}</p>`
+                : '';
+            const tagsBlock = (meta.tags && meta.tags.length)
+                ? `<div class="flex flex-wrap gap-1 justify-center mt-2 w-full">${meta.tags.map((t) => `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#fff5f7] text-[#b85c6f] border border-[#ffd6e0]">${escapeHtml(t)}</span>`).join('')}</div>`
+                : '';
+            const factsBlock = (meta.facts && meta.facts.length)
+                ? `<details class="mt-3 w-full text-left rounded-xl border border-[#eaddcf] bg-[#fdfbf7] px-3 py-2">
+                        <summary class="text-[11px] font-bold text-[#5c4a3a] cursor-pointer select-none">更多信息</summary>
+                        <ul class="mt-2 pl-4 list-disc text-[10px] text-[#6b5c4d] space-y-1">${meta.facts.map((f) => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
+                   </details>`
+                : '';
+            if (region || introBlock || tagsBlock || factsBlock) {
+                catalogExtraHtml = `<div class="w-full max-w-sm border-t border-[#eaddcf] pt-3 mt-1">${region}${introBlock}${tagsBlock}${factsBlock}</div>`;
+            }
+        }
+
         const detailHTML = `
-            <div class="flex flex-col items-center gap-4 p-4 w-full">
+            <div class="flex flex-col items-center gap-4 p-4 w-full max-h-[85vh] overflow-y-auto no-scrollbar">
                 <div class="w-full flex justify-end gap-2 flex-wrap">
                     ${badgesHtml}
                 </div>
                 <div class="relative w-full aspect-square bg-white rounded-2xl flex items-center justify-center border border-gray-100 shadow-inner p-4">
                     <img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="max-w-full max-h-full object-contain drop-shadow-md">
                 </div>
-                <div class="text-center">
+                <div class="text-center w-full">
                     <p class="text-lg font-bold text-[#5c4a3a]">${escapeHtml(fullLabel)}</p>
                     <p class="text-xs text-gray-400 mt-1">${item.source_location ? '关联地点：' + escapeHtml(item.source_location) : (item.location ? '关联地点：' + escapeHtml(item.location) : '来源：旅行记忆')}</p>
                     <p class="text-[10px] text-[#8d7f73] mt-1 leading-snug px-2">${escapeHtml(ui.hint)}</p>
                 </div>
+                ${catalogExtraHtml}
                 ${unlockReasonHtml}
                 ${actionBtn}
                 <button type="button" class="text-sm text-[#8d7f73] underline hover:opacity-80 mt-2" id="btn-back-cabinet">返回见闻柜</button>
@@ -6024,6 +6160,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             });
         }
     }
+
+    const showCollectibleDetail = openCabinetItemDetail;
 
     async function openDiaryModal() {
         if (!diaryList) return;
