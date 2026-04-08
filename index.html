@@ -501,6 +501,57 @@
         .cabinet-matrix-layout-btn:not(.cabinet-matrix-layout-btn--active) {
             opacity: 0.72;
         }
+        .collect-matrix-100-section {
+            margin-bottom: 0.65rem;
+        }
+        .collect-matrix-100-section__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.32rem;
+            padding: 0 0.08rem;
+        }
+        .collect-matrix-100-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.45rem;
+        }
+        @media (min-width: 640px) {
+            .collect-matrix-100-grid {
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+            }
+        }
+        .collect-matrix-100-cell {
+            min-height: 60px;
+            border-radius: 0.75rem;
+            border: 1px dashed rgba(210, 185, 150, 0.75);
+            background: rgba(253, 251, 247, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.4rem 0.3rem;
+            font-size: 10px;
+            color: #7c6a5a;
+        }
+        .collect-matrix-100-cell--clickable {
+            cursor: pointer;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+        .collect-matrix-100-cell--clickable:active {
+            transform: scale(0.98);
+        }
+        .collect-matrix-100-cell--filled {
+            border-style: solid;
+            box-shadow: 0 1px 4px rgba(80, 60, 40, 0.2);
+        }
+        .collect-matrix-100-thumb {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.6rem;
+            object-fit: cover;
+            margin-bottom: 0.15rem;
+        }
 
         /* 物品详情：宽屏左图右文 */
         .cabinet-item-detail.cabinet-detail-grid {
@@ -5447,6 +5498,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     ];
     const MATRIX_DEFAULT_FILTERS = { category: MATRIX_FILTER_ALL, tier: MATRIX_FILTER_ALL, source: MATRIX_FILTER_ALL };
     const CABINET_MATRIX_PAGE_SIZE = 3; // 每页展示 3 个品类行（3*4=12 单元）
+    const CABINET_100_RARITY_CAPACITY = { S: 5, A: 15, B: 30, C: 50 };
     function visibleCollectMatrixCategories() {
         return COLLECT_MATRIX_CATEGORIES.filter((c) => !c.hiddenInMatrix);
     }
@@ -6891,6 +6943,66 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         html += '</div>';
         return html;
     }
+    function buildCollectMatrixFlatList(items) {
+        const buckets = buildCollectMatrixBuckets(items);
+        const out = [];
+        const tiers = ['S', 'A', 'B', 'C'];
+        tiers.forEach((tier) => {
+            visibleCollectMatrixCategories().forEach((cat) => {
+                const arr = (buckets[cat.id] && buckets[cat.id][tier]) || [];
+                arr.forEach((e) => {
+                    if (e && e.item) out.push(e.item);
+                });
+            });
+        });
+        return out;
+    }
+    function buildCollectMatrix100HTML(items) {
+        const buckets = buildCollectMatrixBuckets(items);
+        const tiers = ['S', 'A', 'B', 'C'];
+        let html = '';
+        tiers.forEach((tier) => {
+            const tc = TIER_CONFIG[tier] || TIER_CONFIG.C;
+            const cap = CABINET_100_RARITY_CAPACITY[tier] || 0;
+            const tierItems = [];
+            visibleCollectMatrixCategories().forEach((cat) => {
+                const arr = (buckets[cat.id] && buckets[cat.id][tier]) || [];
+                arr.forEach((e) => { if (e && e.item) tierItems.push(e); });
+            });
+            const collected = Math.min(cap, tierItems.length);
+            const cells = [];
+            for (let i = 0; i < cap; i++) {
+                const entry = tierItems[i];
+                const it = entry && entry.item ? entry.item : null;
+                if (it) {
+                    let thumb = 'assets/cabinet-empty.svg';
+                    if (it.type === 'furniture') thumb = it.image || thumb;
+                    else if (it.scene && it.scene.image) thumb = it.scene.image;
+                    cells.push(
+                        `<button type="button" class="collect-matrix-100-cell collect-matrix-100-cell--filled collect-matrix-100-cell--clickable" data-matrix-item-index="${entry.origIdx}">
+                            <img src="${thumb.replace(/"/g, '%22')}" alt="" class="collect-matrix-100-thumb">
+                        </button>`
+                    );
+                } else {
+                    cells.push(
+                        `<div class="collect-matrix-100-cell">
+                            <span class="text-xl mb-0.5 text-[#d0b8a0]">?</span>
+                        </div>`
+                    );
+                }
+            }
+            html += `
+                <section class="collect-matrix-100-section">
+                    <div class="collect-matrix-100-section__head">
+                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${tc.class}">${tier} ${tc.label}</span>
+                        <span class="text-[10px] font-bold text-[#7c6a5a]">${collected}/${cap}</span>
+                    </div>
+                    <div class="collect-matrix-100-grid">${cells.join('')}</div>
+                </section>
+            `;
+        });
+        return `<div>${html}</div>`;
+    }
 
     function applyCabinetModalSegment(mode) {
         if (!modalBody) return;
@@ -7099,7 +7211,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         })();
         const pageTotalCells = pageCategories.length * 4;
         const pagerHtml = `
-            <div class="cabinet-matrix-pager">
+            <div id="cabinet-matrix-pager" class="cabinet-matrix-pager hidden">
                 <button type="button" class="cabinet-matrix-pager__btn" data-matrix-page-delta="-1" ${pageNow <= 1 ? 'disabled' : ''}>上一页</button>
                 <span class="cabinet-matrix-pager__text">第 ${pageNow}/${totalPages} 页</span>
                 <span class="cabinet-matrix-pager__meta">本页 ${pageUnlockedCount}/${pageTotalCells || 0}</span>
@@ -7170,18 +7282,22 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                             <div class="cabinet-matrix-toolbar__actions">
                                 <button type="button" class="cabinet-matrix-reset-btn" data-matrix-filter-reset="1">重置</button>
                                 <div class="cabinet-matrix-toolbar__views">
-                                    <button type="button" class="cabinet-matrix-layout-btn cabinet-matrix-layout-btn--active" data-matrix-layout="table">表格</button>
+                                    <button type="button" class="cabinet-matrix-layout-btn" data-matrix-layout="table">表格</button>
                                     <button type="button" class="cabinet-matrix-layout-btn" data-matrix-layout="compact">紧凑</button>
+                                    <button type="button" class="cabinet-matrix-layout-btn cabinet-matrix-layout-btn--active" data-matrix-layout="grid100">100格</button>
                                 </div>
                             </div>
                             ${pagerHtml}
                         </div>
                         <p id="cabinet-matrix-info-line" class="hidden text-[10px] text-[#6b5c4d] mb-2 pl-2 border-l-2 border-[#b89a6a]/60 leading-relaxed">纵轴品类对应出游与交友由浅入深的体验层次；横轴稀有度（S→C）主要描述旅行见闻与典藏款。日常 AI 灵感件固定在「普通」格，用于装扮广度，与联名/在地限定的高上限奖励区分开。</p>
-                        <div id="collect-matrix-layout-table" class="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-3">
+                        <div id="collect-matrix-layout-table" class="hidden flex-1 min-h-0 overflow-y-auto no-scrollbar pb-3">
                             ${matrixTableHTML}
                         </div>
                         <div id="collect-matrix-layout-compact" class="hidden flex-1 min-h-0 overflow-y-auto no-scrollbar pb-3">
                             ${matrixCompactHTML}
+                        </div>
+                        <div id="collect-matrix-layout-100" class="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-3">
+                            ${buildCollectMatrix100HTML(items)}
                         </div>
                     </div>
                 </div>
@@ -7244,15 +7360,17 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     const layout = layoutBtn.getAttribute('data-matrix-layout');
                     const tbl = modalBody.querySelector('#collect-matrix-layout-table');
                     const cmp = modalBody.querySelector('#collect-matrix-layout-compact');
-                    if (tbl && cmp) {
-                        if (layout === 'compact') {
-                            tbl.classList.add('hidden');
-                            cmp.classList.remove('hidden');
-                        } else {
-                            cmp.classList.add('hidden');
-                            tbl.classList.remove('hidden');
-                        }
+                    const g100 = modalBody.querySelector('#collect-matrix-layout-100');
+                    const pager = modalBody.querySelector('#cabinet-matrix-pager');
+                    if (tbl && cmp && g100) {
+                        tbl.classList.add('hidden');
+                        cmp.classList.add('hidden');
+                        g100.classList.add('hidden');
+                        if (layout === 'compact') cmp.classList.remove('hidden');
+                        else if (layout === 'grid100') g100.classList.remove('hidden');
+                        else tbl.classList.remove('hidden');
                     }
+                    if (pager) pager.classList.toggle('hidden', layout === 'grid100');
                     modalBody.querySelectorAll('.cabinet-matrix-layout-btn').forEach((b) => {
                         const on = b.getAttribute('data-matrix-layout') === layout;
                         b.classList.toggle('cabinet-matrix-layout-btn--active', on);
@@ -7294,6 +7412,14 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     }
                     const entries = indices.map((i) => ({ item: appState.cabinetItems[i], origIdx: i })).filter((x) => x.item);
                     openCabinetMatrixCellPicker(entries);
+                    return;
+                }
+                const m100 = e.target.closest('[data-matrix-item-index]');
+                if (m100) {
+                    const idx = parseInt(m100.getAttribute('data-matrix-item-index'), 10);
+                    if (Number.isNaN(idx)) return;
+                    const item = appState.cabinetItems[idx];
+                    if (item) openCabinetItemDetail(item);
                     return;
                 }
 
