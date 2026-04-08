@@ -17,7 +17,7 @@
 - `#modal-panel[data-modal-variant="cabinet"]` 多层 `box-shadow`、渐变背景
 - `data-cabinet-subview="detail"` 下列表/详情 catalog 对齐差异
 - `.cabinet-layout`、`.cabinet-chrome-bar`、`.cabinet-progress-row`、`.cabinet-progress-meter`、`.cabinet-segment-wrap`、`.cabinet-segment-btn--active/--idle`
-- `.cabinet-suggestion-banner`、`.cabinet-main-panel`、`.cabinet-footer-hint`
+- `.cabinet-main-panel`、`.cabinet-footer-hint`
 - `.cabinet-matrix-toolbar*`、`.cabinet-hobby-chip`、`.cabinet-matrix-layout-btn--active`
 - `.cabinet-item-detail.cabinet-detail-grid`、`.cabinet-detail-artframe`、`.cabinet-detail-primary-btn`、`.cabinet-detail-back-btn`
 
@@ -35,7 +35,6 @@
 
 - 外层：`<div class="cabinet-layout ...">`
 - 进度 + 分段：`.cabinet-chrome-bar` > `.cabinet-progress-row` > `.cabinet-progress-block`（含 `cabinet-progress-meter` + `__fill` style 宽度 `${progressPct}%`）+ `.cabinet-segment-wrap` 内两个 `cabinet-segment-btn`（`cabinet-segment-btn--active` / `--idle`）
-- `suggestionHtml`：class `cabinet-suggestion-banner`（去掉内联 violet tailwind）
 - `emptyHint`：仍在主面板内或外按视觉定
 - `.cabinet-main-panel` 包裹 `#cabinet-view-tier` 与 `#cabinet-view-matrix`
 - 图鉴：`cabinet-matrix-toolbar` → `__meta`（hint + 说明 + hobby chip 用 `cabinet-hobby-chip`）→ `__filters`（三个下拉）→ `__actions`（重置 + `__views` 内表格/紧凑）

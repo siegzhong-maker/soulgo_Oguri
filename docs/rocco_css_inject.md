@@ -141,30 +141,6 @@ BEGIN_ROCCO_CSS
             background: rgba(255, 255, 255, 0.45);
         }
 
-        .cabinet-suggestion-banner {
-            flex-shrink: 0;
-            display: flex;
-            align-items: flex-start;
-            gap: 0.4rem;
-            padding: 0.5rem 0.65rem;
-            border-radius: 0.65rem;
-            font-size: 10px;
-            line-height: 1.4;
-            color: #4a4036;
-            font-weight: 700;
-            background:
-                linear-gradient(90deg, rgba(255, 250, 238, 0.98) 0%, rgba(245, 236, 218, 0.96) 50%, rgba(252, 246, 232, 0.98) 100%);
-            border: 1px solid rgba(160, 135, 100, 0.4);
-            box-shadow:
-                inset 0 1px 0 rgba(255, 255, 255, 0.75),
-                0 3px 10px rgba(60, 48, 36, 0.08);
-        }
-        .cabinet-suggestion-banner i {
-            flex-shrink: 0;
-            margin-top: 2px;
-            color: #6b7c5c;
-        }
-
         .cabinet-main-panel {
             flex: 1;
             min-height: 0;
