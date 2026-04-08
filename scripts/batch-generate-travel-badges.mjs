@@ -10,7 +10,7 @@
  * 若 Gemini 报 403 地区不可用，先在终端 export HTTPS_PROXY（Clash 等请用 HTTP 代理端口，如 http://127.0.0.1:7890），再执行本脚本；勿设 SOCKS 到 NODE（需 HTTP 代理 URI）。
  *
  * Usage:
- *   node scripts/batch-generate-travel-badges.mjs [--seeds path/to.json] [--limit N] [--place 深圳] [--landmark "平安金融中心"] [--ref path/to/style.png] [--base-url http://localhost:3000]
+ *   node scripts/batch-generate-travel-badges.mjs [--seeds path/to.json] [--limit N] [--place 深圳] [--landmark "平安金融中心"] [--ref path/to/style.png] [--base-url http://localhost:3000] [--allow-text]
  *
  * 试生成 1 张（不必改 JSON）： --limit 1
  * 或指定地点（覆盖 seeds，仅生成这一条）： --place 北京 --landmark "天坛祈年殿"
@@ -49,7 +49,9 @@ function parseArgs(argv) {
         baseUrl: null,
         limit: null,
         place: null,
-        landmark: null
+        landmark: null,
+        styleType: null,
+        noText: true
     };
     for (let i = 2; i < argv.length; i++) {
         if (argv[i] === '--seeds' && argv[i + 1]) {
@@ -65,9 +67,44 @@ function parseArgs(argv) {
             out.place = String(argv[++i]).trim();
         } else if (argv[i] === '--landmark' && argv[i + 1]) {
             out.landmark = String(argv[++i]).trim();
+        } else if (argv[i] === '--style-type' && argv[i + 1]) {
+            const t = String(argv[++i]).trim().toLowerCase();
+            out.styleType = ['badge', 'food', 'sculpture'].includes(t) ? t : null;
+        } else if (argv[i] === '--no-text') {
+            out.noText = true;
+        } else if (argv[i] === '--allow-text') {
+            out.noText = false;
         }
     }
     return out;
+}
+
+function normalizeStyleType(s) {
+    const t = String(s || '').trim().toLowerCase();
+    if (t === 'food' || t === 'sculpture') return t;
+    return 'badge';
+}
+
+function buildStylePrompt(styleType, landmark, badgePlace) {
+    if (styleType === 'food') {
+        return (
+            `Local signature food focus: ${landmark}. ` +
+            `City/region context: ${badgePlace}. ` +
+            'Single square-friendly sticker composition with one plated dish as the main subject, small garnish elements allowed, clean white background, no restaurant logo or extra text.'
+        );
+    }
+    if (styleType === 'sculpture') {
+        return (
+            `Landmark sculpture focus: ${landmark}. ` +
+            `City/region context: ${badgePlace}. ` +
+            'Single square-friendly souvenir sticker composition, centered sculpture and pedestal, gentle environmental cues, clean white background, no extra text.'
+        );
+    }
+    return (
+        `Focus landmark and composition: ${landmark}. ` +
+        `City/region context: ${badgePlace}. ` +
+        'Single square-friendly badge composition, centered subject, generous white margin, souvenir sticker look.'
+    );
 }
 
 function slug(s) {
@@ -124,18 +161,28 @@ function openRouterImageModalities(model) {
     return ['image', 'text'];
 }
 
-async function generateViaOpenRouter(apiKey, model, prompt, badgePlace, refDataUrl) {
+async function generateViaOpenRouter(apiKey, model, prompt, badgePlace, refDataUrl, styleType, noText) {
     const badgePlaceTrim = String(badgePlace || '').trim();
     const styleReferenceInstruction = refDataUrl
         ? 'The attached reference image shows the target illustration style (linework, coloring, sticker/badge composition). Match that style closely. If the user text names a different city or landmark than the reference picture, draw the new landmark in this style—do not copy the reference landmark. '
         : '';
     const place = badgePlaceTrim || '（地点）';
-    const prefix =
-        'Travel souvenir badge / sticker on pure white background. Hand-drawn digital doodle, loose sketchy dark outlines, soft watercolor-like washes, playful travel-journal aesthetic. One simplified iconic landmark as the main subject; small decorative motifs (clouds, stars, leaves) allowed. ' +
-        'TEXT RULE: Only a decorative ribbon or banner at the bottom may contain handwritten Chinese characters for this exact place name: 「' +
-        place +
-        '」. No other text anywhere — no English, no extra labels, no shop signs on buildings, no watermarks. ' +
-        styleReferenceInstruction;
+    const kind = normalizeStyleType(styleType);
+    const baseStyle =
+        'Pure white background. Hand-drawn digital doodle, loose sketchy dark outlines, soft watercolor-like washes, playful travel-journal sticker aesthetic. Square-friendly composition.';
+    const subjectRule =
+        kind === 'food'
+            ? 'One local signature dish as the main subject, with small garnish/decorative motifs only.'
+            : kind === 'sculpture'
+              ? 'One simplified iconic sculpture landmark as the main subject, pedestal and minimal environment cues allowed.'
+              : 'One simplified iconic landmark as the main subject; small decorative motifs (clouds, stars, leaves) allowed.';
+    const textRule =
+        noText || kind === 'food'
+            ? 'TEXT RULE: No text anywhere, no English, no labels, no logos, no watermarks.'
+            : 'TEXT RULE: Only a decorative ribbon or banner at the bottom may contain handwritten Chinese characters for this exact place name: 「' +
+              place +
+              '」. No other text anywhere — no English, no extra labels, no shop signs on buildings, no watermarks.';
+    const prefix = `${baseStyle} ${subjectRule} ${textRule} ${styleReferenceInstruction}`;
 
     const finalPrompt = prefix + prompt;
     const userContent = [{ type: 'text', text: finalPrompt }];
@@ -240,11 +287,13 @@ async function getVercelApiDispatcher() {
     }
 }
 
-async function generateViaLocalApi(baseUrl, prompt, badgePlace, refDataUrl) {
+async function generateViaLocalApi(baseUrl, prompt, badgePlace, refDataUrl, styleType, noText) {
     const body = {
         prompt,
         image_mode: 'travel_badge',
-        badge_place_name: badgePlace
+        badge_place_name: badgePlace,
+        style_type: normalizeStyleType(styleType),
+        no_text: !!noText
     };
     if (refDataUrl) body.reference_image_data_url = refDataUrl;
     const url = `${String(baseUrl).replace(/\/$/, '')}/api/generate-image`;
@@ -324,6 +373,10 @@ async function main() {
     if (args.limit != null) {
         seeds = seeds.slice(0, args.limit);
     }
+    if (args.styleType) {
+        seeds = seeds.filter((s) => normalizeStyleType(s.styleType) === args.styleType);
+        console.log('Filtered by --style-type:', args.styleType, 'count:', seeds.length);
+    }
     if (seeds.length === 0) {
         console.error('No seeds. Use --seeds file.json or --place 北京 [--landmark "…"]');
         process.exit(1);
@@ -368,24 +421,30 @@ async function main() {
             const poolKey = String(seed.poolKey || seed.badge_place_name || 'misc').trim() || 'misc';
             const badgePlace = String(seed.badge_place_name || poolKey).trim();
             const label = String(seed.label || `${poolKey}·${seed.landmark_hint || idx}`).trim();
+            const styleType = normalizeStyleType(seed.styleType);
             if (existingLabels.has(label)) {
                 console.log('Skip existing label:', label);
                 continue;
             }
             const landmark = String(seed.landmark_hint || '当地地标建筑').trim();
-            const prompt =
-                `Focus landmark and composition: ${landmark}. ` +
-                `City/region context: ${badgePlace}. ` +
-                'Single square-friendly badge composition, centered subject, generous white margin, souvenir sticker look.';
+            const prompt = buildStylePrompt(styleType, landmark, badgePlace);
 
             let imageUrl = null;
             let lastErr = null;
             for (let attempt = 0; attempt < 3; attempt++) {
                 try {
                     if (args.baseUrl) {
-                        imageUrl = await generateViaLocalApi(args.baseUrl, prompt, badgePlace, refDataUrl);
+                        imageUrl = await generateViaLocalApi(args.baseUrl, prompt, badgePlace, refDataUrl, styleType, args.noText);
                     } else {
-                        imageUrl = await generateViaOpenRouter(apiKey, model, prompt, badgePlace, refDataUrl);
+                        imageUrl = await generateViaOpenRouter(
+                            apiKey,
+                            model,
+                            prompt,
+                            badgePlace,
+                            refDataUrl,
+                            styleType,
+                            args.noText
+                        );
                     }
                     if (imageUrl) break;
                 } catch (e) {
@@ -414,7 +473,7 @@ async function main() {
             const entry = {
                 image: relImage,
                 label,
-                collectCategory: seed.collectCategory || 'souvenir',
+                collectCategory: seed.collectCategory || styleType || 'souvenir',
                 tier: seed.tier || 'B',
                 memoryTag: seed.memoryTag != null ? String(seed.memoryTag) : `gen_${slug(label)}`,
                 regionLabel: seed.regionLabel != null ? String(seed.regionLabel) : poolKey,

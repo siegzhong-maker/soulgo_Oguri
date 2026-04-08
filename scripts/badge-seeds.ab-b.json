@@ -1,0 +1,35 @@
+[
+  {
+    "poolKey": "北京",
+    "badge_place_name": "北京",
+    "landmark_hint": "天坛祈年殿三重檐",
+    "styleType": "badge",
+    "collectCategory": "badge",
+    "tier": "B",
+    "regionLabel": "北京",
+    "memoryTag": "ab_badge_beijing",
+    "label": "AB-B-北京-badge"
+  },
+  {
+    "poolKey": "上海",
+    "badge_place_name": "上海",
+    "landmark_hint": "小笼包蒸笼与醋碟",
+    "styleType": "food",
+    "collectCategory": "food",
+    "tier": "B",
+    "regionLabel": "上海",
+    "memoryTag": "ab_food_shanghai",
+    "label": "AB-B-上海-food"
+  },
+  {
+    "poolKey": "广州",
+    "badge_place_name": "广州",
+    "landmark_hint": "城市雕塑与基座广场构图",
+    "styleType": "sculpture",
+    "collectCategory": "sculpture",
+    "tier": "B",
+    "regionLabel": "广东",
+    "memoryTag": "ab_sculpture_guangzhou",
+    "label": "AB-B-广州-sculpture"
+  }
+]

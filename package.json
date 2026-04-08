@@ -14,10 +14,11 @@
     "vercel": "^39.0.0"
   },
   "dependencies": {
-    "jszip": "^3.10.1",
     "@ai-sdk/google": "^1.0.0",
     "@supabase/supabase-js": "^2.99.2",
     "ai": "^4.0.0",
+    "jszip": "^3.10.1",
+    "sharp": "^0.34.5",
     "undici": "^6.21.0"
   }
 }

@@ -1,0 +1,602 @@
+[
+  {
+    "source": "场景/generated/badges/三亚/三亚-清补凉-1775640991030-46.png",
+    "output": "场景/generated/pet-home-assets/badges/三亚/三亚-清补凉-1775640991030-46.png",
+    "hasAlpha": true,
+    "changedPixels": 878078
+  },
+  {
+    "source": "场景/generated/badges/上海/上海-东方明珠-1775640018436-1.png",
+    "output": "场景/generated/pet-home-assets/badges/上海/上海-东方明珠-1775640018436-1.png",
+    "hasAlpha": true,
+    "changedPixels": 846691
+  },
+  {
+    "source": "场景/generated/badges/东莞/东莞-烧鹅-1775641048633-52.png",
+    "output": "场景/generated/pet-home-assets/badges/东莞/东莞-烧鹅-1775641048633-52.png",
+    "hasAlpha": true,
+    "changedPixels": 838791
+  },
+  {
+    "source": "场景/generated/badges/中山/中山-石岐乳鸽-1775641060173-53.png",
+    "output": "场景/generated/pet-home-assets/badges/中山/中山-石岐乳鸽-1775641060173-53.png",
+    "hasAlpha": true,
+    "changedPixels": 860258
+  },
+  {
+    "source": "场景/generated/badges/临汾/临汾-牛肉丸子面-1775640971039-44.png",
+    "output": "场景/generated/pet-home-assets/badges/临汾/临汾-牛肉丸子面-1775640971039-44.png",
+    "hasAlpha": true,
+    "changedPixels": 711989
+  },
+  {
+    "source": "场景/generated/badges/丽江/丽江-腊排骨火锅-1775640740767-20.png",
+    "output": "场景/generated/pet-home-assets/badges/丽江/丽江-腊排骨火锅-1775640740767-20.png",
+    "hasAlpha": true,
+    "changedPixels": 716506
+  },
+  {
+    "source": "场景/generated/badges/乌鲁木齐/乌鲁木齐-大盘鸡-1775640787822-26.png",
+    "output": "场景/generated/pet-home-assets/badges/乌鲁木齐/乌鲁木齐-大盘鸡-1775640787822-26.png",
+    "hasAlpha": true,
+    "changedPixels": 654767
+  },
+  {
+    "source": "场景/generated/badges/九江/九江-藜蒿炒腊肉-1775640676134-13.png",
+    "output": "场景/generated/pet-home-assets/badges/九江/九江-藜蒿炒腊肉-1775640676134-13.png",
+    "hasAlpha": true,
+    "changedPixels": 786982
+  },
+  {
+    "source": "场景/generated/badges/佛山/佛山-双皮奶-1775641039839-51.png",
+    "output": "场景/generated/pet-home-assets/badges/佛山/佛山-双皮奶-1775641039839-51.png",
+    "hasAlpha": true,
+    "changedPixels": 949843
+  },
+  {
+    "source": "场景/generated/badges/兰州/兰州-兰州牛肉面-1775640765729-23.png",
+    "output": "场景/generated/pet-home-assets/badges/兰州/兰州-兰州牛肉面-1775640765729-23.png",
+    "hasAlpha": true,
+    "changedPixels": 861758
+  },
+  {
+    "source": "场景/generated/badges/包头/包头-焖面-1775640809460-29.png",
+    "output": "场景/generated/pet-home-assets/badges/包头/包头-焖面-1775640809460-29.png",
+    "hasAlpha": true,
+    "changedPixels": 723540
+  },
+  {
+    "source": "场景/generated/badges/北京/北京-天坛-1775640009860-0.png",
+    "output": "场景/generated/pet-home-assets/badges/北京/北京-天坛-1775640009860-0.png",
+    "hasAlpha": true,
+    "changedPixels": 919219
+  },
+  {
+    "source": "场景/generated/badges/南京/南京-中山陵-1775640058708-5.png",
+    "output": "场景/generated/pet-home-assets/badges/南京/南京-中山陵-1775640058708-5.png",
+    "hasAlpha": true,
+    "changedPixels": 182948
+  },
+  {
+    "source": "场景/generated/badges/南宁/南宁-老友粉-1775640998647-47.png",
+    "output": "场景/generated/pet-home-assets/badges/南宁/南宁-老友粉-1775640998647-47.png",
+    "hasAlpha": true,
+    "changedPixels": 797085
+  },
+  {
+    "source": "场景/generated/badges/南平/南平-武夷山-1775641260463-7.png",
+    "output": "场景/generated/pet-home-assets/badges/南平/南平-武夷山-1775641260463-7.png",
+    "hasAlpha": true,
+    "changedPixels": 882346
+  },
+  {
+    "source": "场景/generated/badges/南昌/南昌-南昌拌粉-1775640669560-12.png",
+    "output": "场景/generated/pet-home-assets/badges/南昌/南昌-南昌拌粉-1775640669560-12.png",
+    "hasAlpha": true,
+    "changedPixels": 798838
+  },
+  {
+    "source": "场景/generated/badges/南通/南通-狼山-1775640095580-9.png",
+    "output": "场景/generated/pet-home-assets/badges/南通/南通-狼山-1775640095580-9.png",
+    "hasAlpha": true,
+    "changedPixels": 941595
+  },
+  {
+    "source": "场景/generated/badges/厦门/厦门-鼓浪屿-1775640178244-18.png",
+    "output": "场景/generated/pet-home-assets/badges/厦门/厦门-鼓浪屿-1775640178244-18.png",
+    "hasAlpha": true,
+    "changedPixels": 912067
+  },
+  {
+    "source": "场景/generated/badges/台州/台州-神仙居-1775641363755-18.png",
+    "output": "场景/generated/pet-home-assets/badges/台州/台州-神仙居-1775641363755-18.png",
+    "hasAlpha": true,
+    "changedPixels": 885840
+  },
+  {
+    "source": "场景/generated/badges/合肥/合肥-包公园-1775640152196-15.png",
+    "output": "场景/generated/pet-home-assets/badges/合肥/合肥-包公园-1775640152196-15.png",
+    "hasAlpha": true,
+    "changedPixels": 871158
+  },
+  {
+    "source": "场景/generated/badges/吉林/吉林-冷面-1775640879283-35.png",
+    "output": "场景/generated/pet-home-assets/badges/吉林/吉林-冷面-1775640879283-35.png",
+    "hasAlpha": true,
+    "changedPixels": 902053
+  },
+  {
+    "source": "场景/generated/badges/呼和浩特/呼和浩特-烧麦-1775640801586-28.png",
+    "output": "场景/generated/pet-home-assets/badges/呼和浩特/呼和浩特-烧麦-1775640801586-28.png",
+    "hasAlpha": true,
+    "changedPixels": 846871
+  },
+  {
+    "source": "场景/generated/badges/咸阳/咸阳-biangbiang面-1775640756732-22.png",
+    "output": "场景/generated/pet-home-assets/badges/咸阳/咸阳-biangbiang面-1775640756732-22.png",
+    "hasAlpha": true,
+    "changedPixels": 812887
+  },
+  {
+    "source": "场景/generated/badges/哈尔滨/哈尔滨-红肠-1775640887671-36.png",
+    "output": "场景/generated/pet-home-assets/badges/哈尔滨/哈尔滨-红肠-1775640887671-36.png",
+    "hasAlpha": true,
+    "changedPixels": 754890
+  },
+  {
+    "source": "场景/generated/badges/唐山/唐山-棋子烧饼-1775640934640-40.png",
+    "output": "场景/generated/pet-home-assets/badges/唐山/唐山-棋子烧饼-1775640934640-40.png",
+    "hasAlpha": true,
+    "changedPixels": 812316
+  },
+  {
+    "source": "场景/generated/badges/嘉兴/嘉兴-南湖红船-1775640131346-13.png",
+    "output": "场景/generated/pet-home-assets/badges/嘉兴/嘉兴-南湖红船-1775640131346-13.png",
+    "hasAlpha": true,
+    "changedPixels": 967632
+  },
+  {
+    "source": "场景/generated/badges/大同/大同-浑源凉粉-1775640960346-43.png",
+    "output": "场景/generated/pet-home-assets/badges/大同/大同-浑源凉粉-1775640960346-43.png",
+    "hasAlpha": true,
+    "changedPixels": 854851
+  },
+  {
+    "source": "场景/generated/badges/大庆/大庆-铁锅炖-1775640898011-37.png",
+    "output": "场景/generated/pet-home-assets/badges/大庆/大庆-铁锅炖-1775640898011-37.png",
+    "hasAlpha": true,
+    "changedPixels": 709628
+  },
+  {
+    "source": "场景/generated/badges/大理/大理-乳扇-1775640729339-19.png",
+    "output": "场景/generated/pet-home-assets/badges/大理/大理-乳扇-1775640729339-19.png",
+    "hasAlpha": true,
+    "changedPixels": 749985
+  },
+  {
+    "source": "场景/generated/badges/大连/大连-海鲜焖子-1775640848419-32.png",
+    "output": "场景/generated/pet-home-assets/badges/大连/大连-海鲜焖子-1775640848419-32.png",
+    "hasAlpha": true,
+    "changedPixels": 797498
+  },
+  {
+    "source": "场景/generated/badges/天津/天津-煎饼果子-1775640914174-38.png",
+    "output": "场景/generated/pet-home-assets/badges/天津/天津-煎饼果子-1775640914174-38.png",
+    "hasAlpha": true,
+    "changedPixels": 854044
+  },
+  {
+    "source": "场景/generated/badges/太原/太原-刀削面-1775640952381-42.png",
+    "output": "场景/generated/pet-home-assets/badges/太原/太原-刀削面-1775640952381-42.png",
+    "hasAlpha": true,
+    "changedPixels": 681888
+  },
+  {
+    "source": "场景/generated/badges/威海/威海-葱烧海参-1775640600189-3.png",
+    "output": "场景/generated/pet-home-assets/badges/威海/威海-葱烧海参-1775640600189-3.png",
+    "hasAlpha": true,
+    "changedPixels": 635922
+  },
+  {
+    "source": "场景/generated/badges/宁德/宁德-太姥山-1775641270133-8.png",
+    "output": "场景/generated/pet-home-assets/badges/宁德/宁德-太姥山-1775641270133-8.png",
+    "hasAlpha": true,
+    "changedPixels": 892243
+  },
+  {
+    "source": "场景/generated/badges/宁波/宁波-天一阁-1775640105801-10.png",
+    "output": "场景/generated/pet-home-assets/badges/宁波/宁波-天一阁-1775640105801-10.png",
+    "hasAlpha": true,
+    "changedPixels": 884341
+  },
+  {
+    "source": "场景/generated/badges/宿迁/宿迁-项王故里-1775641345957-16.png",
+    "output": "场景/generated/pet-home-assets/badges/宿迁/宿迁-项王故里-1775641345957-16.png",
+    "hasAlpha": true,
+    "changedPixels": 913077
+  },
+  {
+    "source": "场景/generated/badges/常州/常州-天宁寺-1775640086494-8.png",
+    "output": "场景/generated/pet-home-assets/badges/常州/常州-天宁寺-1775640086494-8.png",
+    "hasAlpha": true,
+    "changedPixels": 913154
+  },
+  {
+    "source": "场景/generated/badges/广州/广州-广州塔-1775640027969-2.png",
+    "output": "场景/generated/pet-home-assets/badges/广州/广州-广州塔-1775640027969-2.png",
+    "hasAlpha": true,
+    "changedPixels": 1002311
+  },
+  {
+    "source": "场景/generated/badges/开封/开封-灌汤包-1775640629560-7.png",
+    "output": "场景/generated/pet-home-assets/badges/开封/开封-灌汤包-1775640629560-7.png",
+    "hasAlpha": true,
+    "changedPixels": 903221
+  },
+  {
+    "source": "场景/generated/badges/徐州/徐州-云龙湖-1775641278798-9.png",
+    "output": "场景/generated/pet-home-assets/badges/徐州/徐州-云龙湖-1775641278798-9.png",
+    "hasAlpha": true,
+    "changedPixels": 797284
+  },
+  {
+    "source": "场景/generated/badges/惠州/惠州-梅菜扣肉-1775641071592-54.png",
+    "output": "场景/generated/pet-home-assets/badges/惠州/惠州-梅菜扣肉-1775641071592-54.png",
+    "hasAlpha": true,
+    "changedPixels": 745570
+  },
+  {
+    "source": "场景/generated/badges/成都/成都-麻婆豆腐-1775640691634-15.png",
+    "output": "场景/generated/pet-home-assets/badges/成都/成都-麻婆豆腐-1775640691634-15.png",
+    "hasAlpha": true,
+    "changedPixels": 775715
+  },
+  {
+    "source": "场景/generated/badges/扬州/扬州-瘦西湖-1775641288355-10.png",
+    "output": "场景/generated/pet-home-assets/badges/扬州/扬州-瘦西湖-1775641288355-10.png",
+    "hasAlpha": true,
+    "changedPixels": 893997
+  },
+  {
+    "source": "场景/generated/badges/拉萨/拉萨-牦牛肉汤-1775640794751-27.png",
+    "output": "场景/generated/pet-home-assets/badges/拉萨/拉萨-牦牛肉汤-1775640794751-27.png",
+    "hasAlpha": true,
+    "changedPixels": 909920
+  },
+  {
+    "source": "场景/generated/badges/揭阳/揭阳-学宫-1775641198289-0.png",
+    "output": "场景/generated/pet-home-assets/badges/揭阳/揭阳-学宫-1775641198289-0.png",
+    "hasAlpha": true,
+    "changedPixels": 916675
+  },
+  {
+    "source": "场景/generated/badges/无锡/无锡-鼋头渚-1775640076444-7.png",
+    "output": "场景/generated/pet-home-assets/badges/无锡/无锡-鼋头渚-1775640076444-7.png",
+    "hasAlpha": true,
+    "changedPixels": 964083
+  },
+  {
+    "source": "场景/generated/badges/昆明/昆明-过桥米线-1775640720444-18.png",
+    "output": "场景/generated/pet-home-assets/badges/昆明/昆明-过桥米线-1775640720444-18.png",
+    "hasAlpha": true,
+    "changedPixels": 768580
+  },
+  {
+    "source": "场景/generated/badges/晋江/晋江-五店市-1775641228489-3.png",
+    "output": "场景/generated/pet-home-assets/badges/晋江/晋江-五店市-1775641228489-3.png",
+    "hasAlpha": true,
+    "changedPixels": 926559
+  },
+  {
+    "source": "场景/generated/badges/杭州/杭州-西湖-1775640048660-4.png",
+    "output": "场景/generated/pet-home-assets/badges/杭州/杭州-西湖-1775640048660-4.png",
+    "hasAlpha": true,
+    "changedPixels": 938103
+  },
+  {
+    "source": "场景/generated/badges/柳州/柳州-螺蛳粉-1775641017586-49.png",
+    "output": "场景/generated/pet-home-assets/badges/柳州/柳州-螺蛳粉-1775641017586-49.png",
+    "hasAlpha": true,
+    "changedPixels": 710581
+  },
+  {
+    "source": "场景/generated/badges/株洲/株洲-醴陵小炒肉-1775640652876-10.png",
+    "output": "场景/generated/pet-home-assets/badges/株洲/株洲-醴陵小炒肉-1775640652876-10.png",
+    "hasAlpha": true,
+    "changedPixels": 727975
+  },
+  {
+    "source": "场景/generated/badges/桂林/桂林-桂林米粉-1775641009424-48.png",
+    "output": "场景/generated/pet-home-assets/badges/桂林/桂林-桂林米粉-1775641009424-48.png",
+    "hasAlpha": true,
+    "changedPixels": 788475
+  },
+  {
+    "source": "场景/generated/badges/梅州/梅州-围龙屋-1775641220202-2.png",
+    "output": "场景/generated/pet-home-assets/badges/梅州/梅州-围龙屋-1775641220202-2.png",
+    "hasAlpha": true,
+    "changedPixels": 823004
+  },
+  {
+    "source": "场景/generated/badges/武汉/武汉-热干面-1775640636757-8.png",
+    "output": "场景/generated/pet-home-assets/badges/武汉/武汉-热干面-1775640636757-8.png",
+    "hasAlpha": true,
+    "changedPixels": 735461
+  },
+  {
+    "source": "场景/generated/badges/汕头/汕头-牛肉火锅-1775641080804-55.png",
+    "output": "场景/generated/pet-home-assets/badges/汕头/汕头-牛肉火锅-1775641080804-55.png",
+    "hasAlpha": true,
+    "changedPixels": 779971
+  },
+  {
+    "source": "场景/generated/badges/江门/江门-陈皮骨-1775641091291-56.png",
+    "output": "场景/generated/pet-home-assets/badges/江门/江门-陈皮骨-1775641091291-56.png",
+    "hasAlpha": true,
+    "changedPixels": 805891
+  },
+  {
+    "source": "场景/generated/badges/沈阳/沈阳-鸡架-1775640834726-31.png",
+    "output": "场景/generated/pet-home-assets/badges/沈阳/沈阳-鸡架-1775640834726-31.png",
+    "hasAlpha": true,
+    "changedPixels": 809537
+  },
+  {
+    "source": "场景/generated/badges/泉州/泉州-开元寺-1775640188640-19.png",
+    "output": "场景/generated/pet-home-assets/badges/泉州/泉州-开元寺-1775640188640-19.png",
+    "hasAlpha": true,
+    "changedPixels": 768757
+  },
+  {
+    "source": "场景/generated/badges/泰州/泰州-溱潼古镇-1775641323744-13.png",
+    "output": "场景/generated/pet-home-assets/badges/泰州/泰州-溱潼古镇-1775641323744-13.png",
+    "hasAlpha": true,
+    "changedPixels": 876463
+  },
+  {
+    "source": "场景/generated/badges/洛阳/洛阳-洛阳水席-1775640621231-6.png",
+    "output": "场景/generated/pet-home-assets/badges/洛阳/洛阳-洛阳水席-1775640621231-6.png",
+    "hasAlpha": true,
+    "changedPixels": 873029
+  },
+  {
+    "source": "场景/generated/badges/济南/济南-把子肉-1775640576485-0.png",
+    "output": "场景/generated/pet-home-assets/badges/济南/济南-把子肉-1775640576485-0.png",
+    "hasAlpha": true,
+    "changedPixels": 867303
+  },
+  {
+    "source": "场景/generated/badges/海口/海口-海南粉-1775640982653-45.png",
+    "output": "场景/generated/pet-home-assets/badges/海口/海口-海南粉-1775640982653-45.png",
+    "hasAlpha": true,
+    "changedPixels": 791319
+  },
+  {
+    "source": "场景/generated/badges/淮安/淮安-周恩来故里-1775641339632-15.png",
+    "output": "场景/generated/pet-home-assets/badges/淮安/淮安-周恩来故里-1775641339632-15.png",
+    "hasAlpha": true,
+    "changedPixels": 876555
+  },
+  {
+    "source": "场景/generated/badges/深圳/深圳-平安金融中心-1775640036595-3.png",
+    "output": "场景/generated/pet-home-assets/badges/深圳/深圳-平安金融中心-1775640036595-3.png",
+    "hasAlpha": true,
+    "changedPixels": 968220
+  },
+  {
+    "source": "场景/generated/badges/温州/温州-江心屿-1775640115997-11.png",
+    "output": "场景/generated/pet-home-assets/badges/温州/温州-江心屿-1775640115997-11.png",
+    "hasAlpha": true,
+    "changedPixels": 921616
+  },
+  {
+    "source": "场景/generated/badges/湖州/湖州-南浔古镇-1775640142701-14.png",
+    "output": "场景/generated/pet-home-assets/badges/湖州/湖州-南浔古镇-1775640142701-14.png",
+    "hasAlpha": true,
+    "changedPixels": 907976
+  },
+  {
+    "source": "场景/generated/badges/湘潭/湘潭-湘莲排骨汤-1775640661913-11.png",
+    "output": "场景/generated/pet-home-assets/badges/湘潭/湘潭-湘莲排骨汤-1775640661913-11.png",
+    "hasAlpha": true,
+    "changedPixels": 722667
+  },
+  {
+    "source": "场景/generated/badges/湛江/湛江-白切鸡-1775641100839-57.png",
+    "output": "场景/generated/pet-home-assets/badges/湛江/湛江-白切鸡-1775641100839-57.png",
+    "hasAlpha": true,
+    "changedPixels": 862416
+  },
+  {
+    "source": "场景/generated/badges/漳州/漳州-南靖土楼-1775641235637-4.png",
+    "output": "场景/generated/pet-home-assets/badges/漳州/漳州-南靖土楼-1775641235637-4.png",
+    "hasAlpha": true,
+    "changedPixels": 865202
+  },
+  {
+    "source": "场景/generated/badges/潍坊/潍坊-朝天锅-1775640607701-4.png",
+    "output": "场景/generated/pet-home-assets/badges/潍坊/潍坊-朝天锅-1775640607701-4.png",
+    "hasAlpha": true,
+    "changedPixels": 819638
+  },
+  {
+    "source": "场景/generated/badges/潮州/潮州-广济桥-1775641205702-1.png",
+    "output": "场景/generated/pet-home-assets/badges/潮州/潮州-广济桥-1775641205702-1.png",
+    "hasAlpha": true,
+    "changedPixels": 946870
+  },
+  {
+    "source": "场景/generated/badges/烟台/烟台-海肠捞饭-1775640593117-2.png",
+    "output": "场景/generated/pet-home-assets/badges/烟台/烟台-海肠捞饭-1775640593117-2.png",
+    "hasAlpha": true,
+    "changedPixels": 789295
+  },
+  {
+    "source": "场景/generated/badges/珠海/珠海-横琴蚝-1775641033248-50.png",
+    "output": "场景/generated/pet-home-assets/badges/珠海/珠海-横琴蚝-1775641033248-50.png",
+    "hasAlpha": true,
+    "changedPixels": 812056
+  },
+  {
+    "source": "场景/generated/badges/盐城/盐城-湿地公园-1775641310772-12.png",
+    "output": "场景/generated/pet-home-assets/badges/盐城/盐城-湿地公园-1775641310772-12.png",
+    "hasAlpha": true,
+    "changedPixels": 908732
+  },
+  {
+    "source": "场景/generated/badges/石家庄/石家庄-驴肉火烧-1775640921594-39.png",
+    "output": "场景/generated/pet-home-assets/badges/石家庄/石家庄-驴肉火烧-1775640921594-39.png",
+    "hasAlpha": true,
+    "changedPixels": 749591
+  },
+  {
+    "source": "场景/generated/badges/福州/福州-三坊七巷-1775640169439-17.png",
+    "output": "场景/generated/pet-home-assets/badges/福州/福州-三坊七巷-1775640169439-17.png",
+    "hasAlpha": true,
+    "changedPixels": 956686
+  },
+  {
+    "source": "场景/generated/badges/秦皇岛/秦皇岛-海鲜馄饨-1775640942533-41.png",
+    "output": "场景/generated/pet-home-assets/badges/秦皇岛/秦皇岛-海鲜馄饨-1775640942533-41.png",
+    "hasAlpha": true,
+    "changedPixels": 771423
+  },
+  {
+    "source": "场景/generated/badges/绍兴/绍兴-鲁迅故里-1775640123818-12.png",
+    "output": "场景/generated/pet-home-assets/badges/绍兴/绍兴-鲁迅故里-1775640123818-12.png",
+    "hasAlpha": true,
+    "changedPixels": 890149
+  },
+  {
+    "source": "场景/generated/badges/肇庆/肇庆-裹蒸粽-1775641116865-59.png",
+    "output": "场景/generated/pet-home-assets/badges/肇庆/肇庆-裹蒸粽-1775641116865-59.png",
+    "hasAlpha": true,
+    "changedPixels": 862799
+  },
+  {
+    "source": "场景/generated/badges/舟山/舟山-普陀山-1775641372956-19.png",
+    "output": "场景/generated/pet-home-assets/badges/舟山/舟山-普陀山-1775641372956-19.png",
+    "hasAlpha": true,
+    "changedPixels": 967397
+  },
+  {
+    "source": "场景/generated/badges/芜湖/芜湖-鸠兹古镇-1775640161900-16.png",
+    "output": "场景/generated/pet-home-assets/badges/芜湖/芜湖-鸠兹古镇-1775640161900-16.png",
+    "hasAlpha": true,
+    "changedPixels": 860852
+  },
+  {
+    "source": "场景/generated/badges/苏州/苏州-拙政园-1775640068578-6.png",
+    "output": "场景/generated/pet-home-assets/badges/苏州/苏州-拙政园-1775640068578-6.png",
+    "hasAlpha": true,
+    "changedPixels": 934220
+  },
+  {
+    "source": "场景/generated/badges/茂名/茂名-化州牛杂-1775641109745-58.png",
+    "output": "场景/generated/pet-home-assets/badges/茂名/茂名-化州牛杂-1775641109745-58.png",
+    "hasAlpha": true,
+    "changedPixels": 768014
+  },
+  {
+    "source": "场景/generated/badges/莆田/莆田-湄洲岛-1775641243379-5.png",
+    "output": "场景/generated/pet-home-assets/badges/莆田/莆田-湄洲岛-1775641243379-5.png",
+    "hasAlpha": true,
+    "changedPixels": 897177
+  },
+  {
+    "source": "场景/generated/badges/西宁/西宁-手抓羊肉-1775640773074-24.png",
+    "output": "场景/generated/pet-home-assets/badges/西宁/西宁-手抓羊肉-1775640773074-24.png",
+    "hasAlpha": true,
+    "changedPixels": 780523
+  },
+  {
+    "source": "场景/generated/badges/西安/西安-肉夹馍-1775640747895-21.png",
+    "output": "场景/generated/pet-home-assets/badges/西安/西安-肉夹馍-1775640747895-21.png",
+    "hasAlpha": true,
+    "changedPixels": 790041
+  },
+  {
+    "source": "场景/generated/badges/贵阳/贵阳-丝娃娃-1775640711506-17.png",
+    "output": "场景/generated/pet-home-assets/badges/贵阳/贵阳-丝娃娃-1775640711506-17.png",
+    "hasAlpha": true,
+    "changedPixels": 912709
+  },
+  {
+    "source": "场景/generated/badges/赣州/赣州-赣南小炒鱼-1775640683604-14.png",
+    "output": "场景/generated/pet-home-assets/badges/赣州/赣州-赣南小炒鱼-1775640683604-14.png",
+    "hasAlpha": true,
+    "changedPixels": 827269
+  },
+  {
+    "source": "场景/generated/badges/连云港/连云港-花果山-1775641330358-14.png",
+    "output": "场景/generated/pet-home-assets/badges/连云港/连云港-花果山-1775641330358-14.png",
+    "hasAlpha": true,
+    "changedPixels": 872271
+  },
+  {
+    "source": "场景/generated/badges/郑州/郑州-烩面-1775640614517-5.png",
+    "output": "场景/generated/pet-home-assets/badges/郑州/郑州-烩面-1775640614517-5.png",
+    "hasAlpha": true,
+    "changedPixels": 746616
+  },
+  {
+    "source": "场景/generated/badges/鄂尔多斯/鄂尔多斯-手把肉-1775640818704-30.png",
+    "output": "场景/generated/pet-home-assets/badges/鄂尔多斯/鄂尔多斯-手把肉-1775640818704-30.png",
+    "hasAlpha": true,
+    "changedPixels": 835015
+  },
+  {
+    "source": "场景/generated/badges/重庆/重庆-重庆小面-1775640698930-16.png",
+    "output": "场景/generated/pet-home-assets/badges/重庆/重庆-重庆小面-1775640698930-16.png",
+    "hasAlpha": true,
+    "changedPixels": 797609
+  },
+  {
+    "source": "场景/generated/badges/金华/金华-双龙洞-1775641356453-17.png",
+    "output": "场景/generated/pet-home-assets/badges/金华/金华-双龙洞-1775641356453-17.png",
+    "hasAlpha": true,
+    "changedPixels": 835453
+  },
+  {
+    "source": "场景/generated/badges/银川/银川-羊杂碎-1775640780092-25.png",
+    "output": "场景/generated/pet-home-assets/badges/银川/银川-羊杂碎-1775640780092-25.png",
+    "hasAlpha": true,
+    "changedPixels": 711035
+  },
+  {
+    "source": "场景/generated/badges/镇江/镇江-金山寺-1775641295468-11.png",
+    "output": "场景/generated/pet-home-assets/badges/镇江/镇江-金山寺-1775641295468-11.png",
+    "hasAlpha": true,
+    "changedPixels": 946949
+  },
+  {
+    "source": "场景/generated/badges/长春/长春-雪衣豆沙-1775640869319-34.png",
+    "output": "场景/generated/pet-home-assets/badges/长春/长春-雪衣豆沙-1775640869319-34.png",
+    "hasAlpha": true,
+    "changedPixels": 915690
+  },
+  {
+    "source": "场景/generated/badges/长沙/长沙-剁椒鱼头-1775640643178-9.png",
+    "output": "场景/generated/pet-home-assets/badges/长沙/长沙-剁椒鱼头-1775640643178-9.png",
+    "hasAlpha": true,
+    "changedPixels": 705761
+  },
+  {
+    "source": "场景/generated/badges/青岛/青岛-鲅鱼水饺-1775640584810-1.png",
+    "output": "场景/generated/pet-home-assets/badges/青岛/青岛-鲅鱼水饺-1775640584810-1.png",
+    "hasAlpha": true,
+    "changedPixels": 888561
+  },
+  {
+    "source": "场景/generated/badges/鞍山/鞍山-锅包肉-1775640860775-33.png",
+    "output": "场景/generated/pet-home-assets/badges/鞍山/鞍山-锅包肉-1775640860775-33.png",
+    "hasAlpha": true,
+    "changedPixels": 833850
+  },
+  {
+    "source": "场景/generated/badges/龙岩/龙岩-永定土楼-1775641253873-6.png",
+    "output": "场景/generated/pet-home-assets/badges/龙岩/龙岩-永定土楼-1775641253873-6.png",
+    "hasAlpha": true,
+    "changedPixels": 942121
+  }
+]
