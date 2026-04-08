@@ -1,0 +1,32 @@
+[
+  {
+    "poolKey": "北京",
+    "badge_place_name": "北京",
+    "landmark_hint": "天坛祈年殿，圆形三重檐",
+    "label": "北京·天坛",
+    "collectCategory": "sculpture",
+    "tier": "B",
+    "memoryTag": "beijing_temple_heaven",
+    "regionLabel": "北京"
+  },
+  {
+    "poolKey": "深圳",
+    "badge_place_name": "深圳",
+    "landmark_hint": "平安金融中心轮廓与簕杜鹃花卉点缀",
+    "label": "深圳·平安金融中心",
+    "collectCategory": "sculpture",
+    "tier": "B",
+    "memoryTag": "sz_pingan",
+    "regionLabel": "广东"
+  },
+  {
+    "poolKey": "广州",
+    "badge_place_name": "广州",
+    "landmark_hint": "广州塔小蛮腰与珠江意象",
+    "label": "广州·广州塔",
+    "collectCategory": "sculpture",
+    "tier": "B",
+    "memoryTag": "gz_tower",
+    "regionLabel": "广东"
+  }
+]

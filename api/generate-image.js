@@ -2,7 +2,7 @@
 /**
  * Vercel Serverless Function: Generate image using OpenRouter API.
  * 
- * Input: { "prompt": "string", "model": "optional_string", "reference_image_url": "https://...", "reference_image_data_url": "data:image/..." }
+ * Input: { "prompt": "string", "model": "optional_string", "image_mode": "optional travel_badge", "badge_place_name": "optional Chinese place for ribbon text", "reference_image_url": "https://...", "reference_image_data_url": "data:image/..." }
  * Output: { "image_url": "string (base64 or http url)" }
  */
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -27,7 +27,7 @@ export async function POST(request) {
         );
     }
 
-    const { prompt, model: userModel, reference_image_url, reference_image_data_url } = body;
+    const { prompt, model: userModel, reference_image_url, reference_image_data_url, image_mode, badge_place_name } = body;
     if (!prompt) {
         return new Response(
             JSON.stringify({ error: 'missing_prompt', message: 'Prompt is required.' }),
@@ -54,16 +54,37 @@ export async function POST(request) {
         }
     }
 
-    // 约束：不在图中生成任何文字，避免乱码
+    const isTravelBadge = image_mode === 'travel_badge';
+    const badgePlace = typeof badge_place_name === 'string' ? badge_place_name.trim() : '';
+
+    // 旅行纪念徽章：允许底部丝带手写中文地名；日记/默认模式禁止任何文字
     const noTextInstruction = 'Important: The image must not contain any text, words, letters, signs, labels, captions, or writing. No text overlay. Pure visual scene only. ';
-    const referenceInstruction = referenceImageUrlForModel
+    const mascotReferenceInstruction = referenceImageUrlForModel
         ? 'The attached reference image shows the exact mascot IP (Xiao Su / 小粟). Recreate the SAME character identity: same face shape, eyes, long rabbit ears, fluffy squirrel tail, chibi round body, cream-apricot palette, sunflower bow on chest, crossbody picnic-basket bag, paw colors, and overall illustration style. Follow the user text for shot composition, body orientation, pose, activity, and time of day—vary these across images; avoid repeating the same framing and stiff front-facing tourist pose when the instructions call for something different. Change environment, pose, and lighting as directed; do not invent a different species or generic mascot. '
         : '';
-    const finalPrompt = noTextInstruction + referenceInstruction + prompt;
+    const styleReferenceInstruction = referenceImageUrlForModel
+        ? 'The attached reference image shows the target illustration style (linework, coloring, sticker/badge composition). Match that style closely. If the user text names a different city or landmark than the reference picture, draw the new landmark in this style—do not copy the reference landmark. '
+        : '';
+
+    let prefix = '';
+    if (isTravelBadge) {
+        const place = badgePlace || '（地点）';
+        prefix =
+            'Travel souvenir badge / sticker on pure white background. Hand-drawn digital doodle, loose sketchy dark outlines, soft watercolor-like washes, playful travel-journal aesthetic. One simplified iconic landmark as the main subject; small decorative motifs (clouds, stars, leaves) allowed. ' +
+            'TEXT RULE: Only a decorative ribbon or banner at the bottom may contain handwritten Chinese characters for this exact place name: 「' +
+            place +
+            '」. No other text anywhere — no English, no extra labels, no shop signs on buildings, no watermarks. ' +
+            (referenceImageUrlForModel ? styleReferenceInstruction : '');
+    } else {
+        prefix = noTextInstruction + (referenceImageUrlForModel ? mascotReferenceInstruction : '');
+    }
+    const finalPrompt = prefix + prompt;
 
     // Prefer environment variable, then user input, then default (image-capable model)
     // Use google/gemini-2.5-flash-image; -preview suffix can 404 on OpenRouter
     const model = process.env.OPENROUTER_IMAGE_MODEL || userModel || 'google/gemini-2.5-flash-image';
+    const outputModalities =
+        /black-forest-labs\/flux|\/flux\./i.test(model) ? ['image'] : ['image', 'text'];
 
     const userContent = [{ type: 'text', text: finalPrompt }];
     if (referenceImageUrlForModel) {
@@ -79,8 +100,7 @@ export async function POST(request) {
                 content: userContent
             }
         ],
-        // OpenRouter: use ["image", "text"] for multimodal models (e.g. Gemini)
-        modalities: ["image", "text"]
+        modalities: outputModalities
     };
 
     try {
@@ -89,7 +109,7 @@ export async function POST(request) {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`,
-                'X-Title': 'SoulGo Travel Diary Image Gen'
+                'X-Title': isTravelBadge ? 'SoulGo Travel Badge Gen' : 'SoulGo Travel Diary Image Gen'
             },
             body: JSON.stringify(payload)
         });

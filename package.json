@@ -6,14 +6,18 @@
   "description": "SoulGo travel diary AIGC + RAG (minimal runnable: embed-and-store, retrieve)",
   "scripts": {
     "local": "vercel dev",
-    "verify:rabbit-assets": "node scripts/verify-rabbit-assets.mjs"
+    "verify:rabbit-assets": "node scripts/verify-rabbit-assets.mjs",
+    "generate:badges": "node scripts/batch-generate-travel-badges.mjs",
+    "ingest:checkin": "node scripts/ingest-checkin-export.mjs"
   },
   "devDependencies": {
     "vercel": "^39.0.0"
   },
   "dependencies": {
+    "jszip": "^3.10.1",
     "@ai-sdk/google": "^1.0.0",
     "@supabase/supabase-js": "^2.99.2",
-    "ai": "^4.0.0"
+    "ai": "^4.0.0",
+    "undici": "^6.21.0"
   }
 }
