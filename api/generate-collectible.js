@@ -13,6 +13,54 @@ function normalizeStyleType(styleType, preferredCategory) {
   return 'badge';
 }
 
+const IMAGE_TEXT_RULE =
+  'TEXT RULE: Absolutely no readable text in the image — no Chinese characters, no Latin letters used as words or labels, no numbers on signs, no shop signage, no food packaging typography, no captions, no logos, no watermarks. Illustration only. ';
+
+/** Use model sidecar text as intro when it is Chinese prose (avoids second API call). */
+function extractIntroFromMessage(data, maxLen = 220) {
+  const message = data?.choices?.[0]?.message;
+  if (!message) return '';
+  let text = '';
+  if (typeof message.content === 'string') {
+    text = message.content;
+  } else if (Array.isArray(message.content)) {
+    for (const part of message.content) {
+      if (!part || typeof part !== 'object') continue;
+      if (part.type === 'text') {
+        if (typeof part.text === 'string') text += part.text;
+        else if (part.text && typeof part.text.value === 'string') text += part.text.value;
+      }
+    }
+  }
+  text = String(text)
+    .replace(/!\[[^\]]*?\]\([^)]+\)/g, ' ')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const hasCjk = /[\u4e00-\u9fff]/.test(text);
+  if (!hasCjk || text.length < 10) return '';
+  const bad = /^(好的|好的，|here|sure|ok)\b/i.test(text);
+  if (bad && text.length < 40) return '';
+  if (text.length > maxLen) {
+    text = text.slice(0, maxLen).replace(/[，,、]\s*$/, '');
+    return `${text}…`;
+  }
+  return text;
+}
+
+function fallbackIntroFromScene(location, styleType, memoryTag) {
+  const loc = String(location || '这里').trim() || '这里';
+  const tag = String(memoryTag || '').trim();
+  const tagHint = tag && !tag.startsWith('dyn_') ? `与你途中记下的「${tag}」氛围相配，` : '';
+  if (styleType === 'food') {
+    return `${tagHint}这枚手帐风贴纸采集「${loc}」的风味印象——用色彩和线条留住舌尖与街角的一瞬，适合收进见闻柜慢慢翻。`;
+  }
+  if (styleType === 'sculpture') {
+    return `${tagHint}这枚贴纸把「${loc}」的城市轮廓收成一枚小地标，线条轻快、留白干净，像旅行日记里随手贴上的那一角。`;
+  }
+  return `${tagHint}这枚旅行徽章拼起「${loc}」的符号碎片，看到它就能想起当时的光与路。`;
+}
+
 function extractImageUrl(data) {
   const message = data?.choices?.[0]?.message;
   if (!message) return null;
@@ -78,13 +126,14 @@ async function removeWhiteBg(pngBuf) {
 function stylePrompt(styleType, location, memoryTag) {
   const loc = String(location || '某地').trim();
   const tag = String(memoryTag || '').trim();
+  const hint = tag ? `Creative hint (do not render as text): ${tag}. ` : '';
   if (styleType === 'food') {
-    return `Travel collectible sticker, white background, one local signature food from ${loc}, hand-drawn doodle style, no text, no logo, no watermark. Hint tag: ${tag}.`;
+    return `${IMAGE_TEXT_RULE}${hint}Travel collectible sticker, pure white background, one plated local signature food from ${loc}, hand-drawn doodle style, soft outlines. Repeat: zero text in the artwork.`;
   }
   if (styleType === 'sculpture') {
-    return `Travel collectible sticker, white background, one iconic landmark/sculpture from ${loc}, hand-drawn doodle style, no text, no logo, no watermark. Hint tag: ${tag}.`;
+    return `${IMAGE_TEXT_RULE}${hint}Travel collectible sticker, pure white background, one iconic landmark or sculpture from ${loc}, hand-drawn doodle style. No building signs or engraved lettering.`;
   }
-  return `Travel fridge magnet badge collectible for ${loc}, one concise symbolic composition, hand-drawn doodle style, white background, no text, no logo, no watermark. Hint tag: ${tag}.`;
+  return `${IMAGE_TEXT_RULE}${hint}Travel fridge magnet badge for ${loc}, one concise symbolic composition, hand-drawn doodle, white background, no emblems that include writing.`;
 }
 
 function sceneLabel(styleType, location) {
@@ -212,6 +261,7 @@ export async function POST(request) {
     const cutout = await removeWhiteBg(rawBuf);
     const imageDataUrl = bufferToDataUrlPng(cutout);
     const collectCategory = styleType === 'food' ? 'food' : (styleType === 'sculpture' ? 'sculpture' : 'souvenir');
+    const introText = extractIntroFromMessage(data) || fallbackIntroFromScene(location, styleType, memoryTag);
     const scene = {
       image: imageDataUrl,
       label: sceneLabel(styleType, location),
@@ -222,8 +272,8 @@ export async function POST(request) {
       regionLabel: location,
       assetSource: 'ai_daily',
       collectibleSourceType: 'aigc_cutout_manifest',
-      intro: `「${location}」实时生成收集物。`,
-      facts: ['Gemini 2.5 Flash 动态生成', '自动扣图'],
+      intro: introText,
+      facts: ['Gemini 2.5 Flash 动态生成', '自动扣图（白底近似透明）'],
       tags: ['AIGC', styleType, '动态掉落']
     };
     const persistedImage = persistCollectibleAsset(cutout, styleType, location, scene);

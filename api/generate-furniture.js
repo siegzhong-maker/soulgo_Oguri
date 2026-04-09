@@ -35,10 +35,12 @@ export async function POST(request) {
     }
 
     const cityStr = city ? `(${city})` : '';
-    const imagePrompt = `Design a single piece of furniture/decor item inspired by this location: "${location}" ${cityStr}. 
+    const imagePrompt = `TEXT RULE: No readable text anywhere — no Chinese, no Latin words or labels, no numbers on signs, no packaging typography, no logos, no watermarks. Pure illustration only.
+
+Design a single piece of furniture/decor item inspired by this location: "${location}" ${cityStr}. 
     Style: Isometric 3D game asset, cute cartoon style, soft cream background (hex #fffaf0 or #fdfbf7), soft lighting, 3D render, Blender style. 
     Subject: A single object (e.g., chair, table, lamp, decor) that fits the location's theme. 
-    Constraint: No text, no words, no letters in the image. Pure visual asset. 
+    Constraint: Absolutely zero text in the image; no shop signs or captions. 
     Context: ${diary_excerpt ? diary_excerpt.slice(0, 100) : ''}...`;
 
     const model = process.env.OPENROUTER_IMAGE_MODEL || 'google/gemini-2.5-flash-image';
