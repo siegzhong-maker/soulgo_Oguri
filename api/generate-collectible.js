@@ -48,6 +48,19 @@ function extractIntroFromMessage(data, maxLen = 220) {
   return text;
 }
 
+/** 详情页「收藏说明」：世界观化短句，避免模型名与管线术语 */
+function productFactsForCollectible() {
+  return [
+    '随你在当地的打卡灵感即时绘成，像旅行手帐里刚贴上的那一枚。',
+    '边缘已细细修过，像剪好的贴纸，方便直接摆进小屋。'
+  ];
+}
+
+function productTagsForStyleType(styleType) {
+  const theme = styleType === 'food' ? '食物' : styleType === 'sculpture' ? '地标' : '纪念徽章';
+  return [theme, '旅途灵感'];
+}
+
 function fallbackIntroFromScene(location, styleType, memoryTag) {
   const loc = String(location || '这里').trim() || '这里';
   const tag = String(memoryTag || '').trim();
@@ -273,8 +286,8 @@ export async function POST(request) {
       assetSource: 'ai_daily',
       collectibleSourceType: 'aigc_cutout_manifest',
       intro: introText,
-      facts: ['Gemini 2.5 Flash 动态生成', '自动扣图（白底近似透明）'],
-      tags: ['AIGC', styleType, '动态掉落']
+      facts: productFactsForCollectible(),
+      tags: productTagsForStyleType(styleType)
     };
     const persistedImage = persistCollectibleAsset(cutout, styleType, location, scene);
     if (persistedImage) {
