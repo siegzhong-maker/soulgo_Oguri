@@ -2263,6 +2263,14 @@
                 right: auto;
             }
         }
+
+        .checkin-load-orb {
+            animation: checkinLoadOrbPulse 1.15s ease-in-out infinite;
+        }
+        @keyframes checkinLoadOrbPulse {
+            0%, 100% { transform: scale(1); opacity: 0.88; }
+            50% { transform: scale(1.12); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -2284,6 +2292,7 @@
             </h1>
         </header>
 
+        <div id="checkin-load-scope" class="relative flex flex-col flex-1 min-h-0 min-w-0 w-full">
         <!-- 动漫风格可交互中国地图（使用 Wikimedia 公有领域 SVG） -->
         <div id="china-map-container" class="relative w-full flex-1 min-h-[200px] rounded-[40px] border-[6px] border-[#e0f7fa] shadow-[0_8px_32px_rgba(162,210,255,0.35)] overflow-hidden mb-4 flex items-center justify-center transition-all duration-300 hover:shadow-[0_12px_40px_rgba(162,210,255,0.4)]">
             
@@ -2348,6 +2357,15 @@
                     返回宠物小屋
                 </button>
             </div>
+        </div>
+        <div id="checkin-load-overlay" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-auto" aria-live="polite">
+            <div class="absolute inset-0 bg-[#fffaf0]/82 backdrop-blur-[3px]"></div>
+            <div class="relative z-[1] flex flex-col items-center gap-3 px-6 py-8 max-w-sm text-center">
+                <div class="checkin-load-orb w-14 h-14 rounded-full bg-gradient-to-br from-[#ffcad4] to-[#a2d2ff] shadow-lg border-4 border-white/90" aria-hidden="true"></div>
+                <p id="checkin-load-status" class="text-sm font-bold text-gray-800 leading-snug">正在处理…</p>
+                <p class="text-[11px] text-gray-500">小爪子在飞奔，请稍等一小会儿</p>
+            </div>
+        </div>
         </div>
     </div>
 
@@ -3891,6 +3909,19 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     const btnCheckin = document.getElementById('btn-checkin');
     const mapPinsContainer = document.getElementById('map-pins-container');
     const checkinToast = document.getElementById('checkin-toast');
+    const checkinLoadOverlay = document.getElementById('checkin-load-overlay');
+    const checkinLoadStatusEl = document.getElementById('checkin-load-status');
+    function setCheckinLoadingUi(active, message) {
+        if (!checkinLoadOverlay) return;
+        if (active) {
+            checkinLoadOverlay.classList.remove('hidden');
+            checkinLoadOverlay.setAttribute('aria-busy', 'true');
+            if (checkinLoadStatusEl && message) checkinLoadStatusEl.textContent = message;
+        } else {
+            checkinLoadOverlay.classList.add('hidden');
+            checkinLoadOverlay.removeAttribute('aria-busy');
+        }
+    }
     const checkinListPanel = document.getElementById('checkin-list-panel');
     const checkinList = document.getElementById('checkin-list');
     const checkinListEmpty = document.getElementById('checkin-list-empty');
@@ -8845,6 +8876,110 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }, 1000);
     }
 
+    async function fetchCheckinMemorySummary(diaryText, location, checkinDateStr) {
+        let summaryFromLLM = null;
+        let emotionFromLLM = null;
+        let keyFactsFromLLM = null;
+        try {
+            const timeSlot = typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '';
+            const travelMemoriesForDiff = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
+            const recentForCity = travelMemoriesForDiff.find((m) => {
+                const cityLabel = m.location_city || m.location || '';
+                return location && (cityLabel.indexOf(location) >= 0 || location.indexOf(cityLabel) >= 0);
+            }) || travelMemoriesForDiff[0];
+            const lastSummary = recentForCity
+                ? (recentForCity.summary || recentForCity.narration || recentForCity.text || '')
+                : '';
+
+            const checkinFreq = (appState.locations || []).filter((l) => (l || '').indexOf(location) >= 0 || (location || '').indexOf(l || '') >= 0).length;
+            const interactionFreq = (appState.interactionLog || []).length;
+            const body = {
+                diaryText,
+                location,
+                date: checkinDateStr,
+                time_slot: timeSlot,
+                personality: appState.petPersonality || '小粟',
+                checkin_frequency: checkinFreq,
+                interaction_frequency: interactionFreq
+            };
+            if (lastSummary) body.last_summary = lastSummary;
+
+            const resp = await fetch('/api/memory-summary', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data && data.summary && data.emotion) {
+                    summaryFromLLM = data.summary;
+                    emotionFromLLM = data.emotion;
+                    if (Array.isArray(data.key_facts)) keyFactsFromLLM = data.key_facts;
+                } else {
+                    console.warn('[Memory Summary] 响应缺少 summary/emotion 字段，使用模板回退。', data);
+                }
+            } else {
+                console.warn('[Memory Summary] 接口返回非 2xx，状态：', resp.status);
+            }
+        } catch (err) {
+            console.warn('[Memory Summary] 调用 /api/memory-summary 失败，使用模板回退。', err);
+        }
+        return { summaryFromLLM, emotionFromLLM, keyFactsFromLLM };
+    }
+
+    async function resolveCheckinDroppedSceneForParallel(ctx) {
+        const {
+            skipCollectible,
+            n,
+            location,
+            collectibleLocs,
+            diaryText,
+            ragUnlockSource
+        } = ctx;
+        let droppedScene = null;
+        if (!skipCollectible) {
+            await ensureBadgeManifestLoaded();
+            const seqIndex = collectibleLocs.length;
+            const forcedTier = getForcedTierBySequence(seqIndex);
+            const recentEpisodic = (appState.memories && Array.isArray(appState.memories.episodic)) ? appState.memories.episodic[0] : null;
+            const recentTag = recentEpisodic && recentEpisodic.memoryTag ? recentEpisodic.memoryTag : null;
+            const currentTag = inferMemoryTagFromContext(location, null, diaryText);
+            const effectiveTag = currentTag || recentTag || null;
+            const collectibleIntent = buildCollectibleIntent(location, effectiveTag, ragUnlockSource);
+            droppedScene = getDroppedScene(n, location, forcedTier, effectiveTag, ragUnlockSource);
+            const dynamicScene = await tryGenerateDynamicCollectible(location, forcedTier, collectibleIntent);
+            if (dynamicScene) droppedScene = dynamicScene;
+            if (!droppedScene && typeof isChinaLocation === 'function' && isChinaLocation(location)) {
+                const forcedDyn = await tryGenerateDynamicCollectible(location, forcedTier, collectibleIntent, { force: true });
+                if (forcedDyn) {
+                    droppedScene = forcedDyn;
+                    if (typeof isCollectDebugEnabled === 'function' && isCollectDebugEnabled()) {
+                        const prev =
+                            window.__lastCollectibleDecision && typeof window.__lastCollectibleDecision === 'object'
+                                ? window.__lastCollectibleDecision
+                                : {};
+                        const mh =
+                            window.__soulgoCollectibleManifest && typeof window.__soulgoCollectibleManifest === 'object'
+                                ? window.__soulgoCollectibleManifest
+                                : {};
+                        reportCollectDecisionDebug({
+                            ...prev,
+                            dynamicForced: true,
+                            manifestPetHomeOk: mh.petHomeOk,
+                            selectedLabel: forcedDyn.label || '',
+                            selectedSourceType: 'aigc_cutout_manifest',
+                            selectedCategory: forcedDyn.collectCategory || ''
+                        });
+                    }
+                } else if (typeof isCollectDebugEnabled === 'function' && isCollectDebugEnabled() && typeof showPetMessage === 'function') {
+                    showPetMessage('静态池为空且动态生成未成功（请检查 /api/generate-collectible 与 OPENROUTER_API_KEY）。', { duration: 5500 });
+                }
+            }
+        }
+        return { droppedScene };
+    }
+
     // --- 核心：打卡联动 ---
         btnCheckin.addEventListener('click', async () => {
         if (isCheckinInProgress) return;
@@ -8868,6 +9003,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             
             // 1. 在地图上随机位置生成打卡图钉
             addMapPin(location);
+            setCheckinLoadingUi(true, '正在写旅行日记…');
 
             let diaryText = '';
             let usedFallback = false;
@@ -8919,47 +9055,32 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 saveState();
             }
 
+            const checkinDateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+            setCheckinLoadingUi(true, '正在整理纪念物与旅行记忆…');
+
             let droppedScene = null;
-            let collectibleIntent = null;
-            if (!skipCollectible) {
-                await ensureBadgeManifestLoaded();
-                const seqIndex = collectibleLocs.length;
-                const forcedTier = getForcedTierBySequence(seqIndex); // C-B-A-S 循环
-                const recentEpisodic = (appState.memories && Array.isArray(appState.memories.episodic)) ? appState.memories.episodic[0] : null;
-                const recentTag = recentEpisodic && recentEpisodic.memoryTag ? recentEpisodic.memoryTag : null;
-                const currentTag = inferMemoryTagFromContext(location, null, diaryText);
-                const effectiveTag = currentTag || recentTag || null;
-                collectibleIntent = buildCollectibleIntent(location, effectiveTag, ragUnlockSource);
-                droppedScene = getDroppedScene(n, location, forcedTier, effectiveTag, ragUnlockSource);
-                const dynamicScene = await tryGenerateDynamicCollectible(location, forcedTier, collectibleIntent);
-                if (dynamicScene) droppedScene = dynamicScene;
-                if (!droppedScene && typeof isChinaLocation === 'function' && isChinaLocation(location)) {
-                    const forcedDyn = await tryGenerateDynamicCollectible(location, forcedTier, collectibleIntent, { force: true });
-                    if (forcedDyn) {
-                        droppedScene = forcedDyn;
-                        if (typeof isCollectDebugEnabled === 'function' && isCollectDebugEnabled()) {
-                            const prev =
-                                window.__lastCollectibleDecision && typeof window.__lastCollectibleDecision === 'object'
-                                    ? window.__lastCollectibleDecision
-                                    : {};
-                            const mh =
-                                window.__soulgoCollectibleManifest && typeof window.__soulgoCollectibleManifest === 'object'
-                                    ? window.__soulgoCollectibleManifest
-                                    : {};
-                            reportCollectDecisionDebug({
-                                ...prev,
-                                dynamicForced: true,
-                                manifestPetHomeOk: mh.petHomeOk,
-                                selectedLabel: forcedDyn.label || '',
-                                selectedSourceType: 'aigc_cutout_manifest',
-                                selectedCategory: forcedDyn.collectCategory || ''
-                            });
-                        }
-                    } else if (typeof isCollectDebugEnabled === 'function' && isCollectDebugEnabled() && typeof showPetMessage === 'function') {
-                        showPetMessage('静态池为空且动态生成未成功（请检查 /api/generate-collectible 与 OPENROUTER_API_KEY）。', { duration: 5500 });
-                    }
-                }
-            }
+            let summaryFromLLM = null;
+            let emotionFromLLM = null;
+            let keyFactsFromLLM = null;
+
+            const [collectRes, memRes] = await Promise.all([
+                resolveCheckinDroppedSceneForParallel({
+                    skipCollectible,
+                    n,
+                    location,
+                    collectibleLocs,
+                    diaryText,
+                    ragUnlockSource
+                }).catch((err) => {
+                    console.warn('[Checkin] collectible branch error:', err);
+                    return { droppedScene: null };
+                }),
+                fetchCheckinMemorySummary(diaryText, location, checkinDateStr)
+            ]);
+            droppedScene = collectRes.droppedScene;
+            summaryFromLLM = memRes.summaryFromLLM;
+            emotionFromLLM = memRes.emotionFromLLM;
+            keyFactsFromLLM = memRes.keyFactsFromLLM;
 
             const scene = droppedScene || getSceneAsset(location);
 
@@ -8985,6 +9106,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 ? { kind: 'scene', scene: droppedScene, tier: (droppedScene.tier || 'C'), location }
                 : null;
             const diaryMeta = generateDiaryEntry(location, diaryText, scene, memoryCountForHint, memorySources, rewardForDiary);
+
+            setCheckinLoadingUi(false);
 
             // 2.0 先展示打卡预览（含日记+图片占位），以便 AIGC 生图能同时更新预览区；场景掉落时不再在此展示 itemBlock，改由 showRewardModal 弹窗
             showCheckinPreview(location, {
@@ -9023,57 +9146,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 generateImageForDiary(diaryMeta.diaryId, location, appState.petPersonality, diaryText).catch(err => console.error('[AIGC Image] Error triggering image generation:', err));
             }
 
-            // 2.5 生成一条情景记忆：优先调用 /api/memory-summary 抽取 summary/emotion/key_facts，失败则回退模板
+            // 2.5 情景记忆：summary 已在上方与收集物并行请求；此处写入 episodic + RAG
             if (diaryMeta && diaryMeta.diaryId) {
-                let summaryFromLLM = null;
-                let emotionFromLLM = null;
-                let keyFactsFromLLM = null;
-                try {
-                    const timeSlot = typeof getCurrentTimeSlot === 'function' ? getCurrentTimeSlot() : '';
-                    const travelMemoriesForDiff = typeof getEpisodicTravel === 'function' ? getEpisodicTravel() : [];
-                    const recentForCity = travelMemoriesForDiff.find((m) => {
-                        const cityLabel = m.location_city || m.location || '';
-                        return location && (cityLabel.indexOf(location) >= 0 || location.indexOf(cityLabel) >= 0);
-                    }) || travelMemoriesForDiff[0];
-                    const lastSummary = recentForCity
-                        ? (recentForCity.summary || recentForCity.narration || recentForCity.text || '')
-                        : '';
-
-                    const checkinFreq = (appState.locations || []).filter((l) => (l || '').indexOf(location) >= 0 || (location || '').indexOf(l || '') >= 0).length;
-                    const interactionFreq = (appState.interactionLog || []).length;
-                    const body = {
-                        diaryText,
-                        location,
-                        date: diaryMeta.date,
-                        time_slot: timeSlot,
-                        personality: appState.petPersonality || '小粟',
-                        checkin_frequency: checkinFreq,
-                        interaction_frequency: interactionFreq
-                    };
-                    if (lastSummary) body.last_summary = lastSummary;
-
-                    const resp = await fetch('/api/memory-summary', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body)
-                    });
-
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        if (data && data.summary && data.emotion) {
-                            summaryFromLLM = data.summary;
-                            emotionFromLLM = data.emotion;
-                            if (Array.isArray(data.key_facts)) keyFactsFromLLM = data.key_facts;
-                        } else {
-                            console.warn('[Memory Summary] 响应缺少 summary/emotion 字段，使用模板回退。', data);
-                        }
-                    } else {
-                        console.warn('[Memory Summary] 接口返回非 2xx，状态：', resp.status);
-                    }
-                } catch (err) {
-                    console.warn('[Memory Summary] 调用 /api/memory-summary 失败，使用模板回退。', err);
-                }
-
                 const memoryTag = inferMemoryTagFromContext(location, keyFactsFromLLM, diaryText);
 
                 appendEpisodicMemory({
@@ -9229,6 +9303,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }, 1500);
         } catch (e) {
             console.error('[Diary AIGC] 生成日记流程出现异常:', e);
+            setCheckinLoadingUi(false);
             if (checkinToast) {
                 checkinToast.textContent = '今天网络有点小问题，我先用自己的小脑袋记下来，等会儿再帮你翻完整的旅行记忆～';
             }
@@ -9236,6 +9311,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 btnCheckin.innerText = originalText || '去打卡';
             }
         } finally {
+            setCheckinLoadingUi(false);
             btnCheckin.disabled = false;
             if (btnCheckin.innerText === '写日记中…') {
                 btnCheckin.innerText = originalText || '去打卡';
@@ -10266,6 +10342,17 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     }
 
     // --- 调用后端 /api/diary（RAG + 统一 JSON），并兼容旧调用方 ---
+    const DIARY_API_TIMEOUT_MS = 12000;
+
+    function createDiaryFetchAbortSignal() {
+        if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+            return AbortSignal.timeout(DIARY_API_TIMEOUT_MS);
+        }
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), DIARY_API_TIMEOUT_MS);
+        return controller.signal;
+    }
+
     async function generateDiaryWithAIGC(location, personality) {
         const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
         const ownerTitle = getOwnerTitle();
@@ -10289,7 +10376,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     language: 'zh-CN',
                     semanticProfileSnapshot,
                     habitSummaries
-                })
+                }),
+                signal: createDiaryFetchAbortSignal()
             });
 
             if (!response.ok) {
@@ -10315,6 +10403,10 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 thinkingSteps
             };
         } catch (error) {
+            if (error && error.name === 'AbortError') {
+                console.warn('Diary API timed out or aborted.');
+                return { ok: false, error: 'timeout' };
+            }
             console.error('Diary API network error:', error);
             return { ok: false, error: 'network' };
         }
