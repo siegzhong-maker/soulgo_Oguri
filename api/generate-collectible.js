@@ -110,8 +110,23 @@ function bufferToDataUrlPng(buf) {
   return `data:image/png;base64,${buf.toString('base64')}`;
 }
 
-/** Low-chroma pixels only: fade near-white (existing) and near-black (models that ignore white-bg prompt). */
-function alphaFromFlatBackground(r, g, b, a, whiteThreshold, whiteFeather, blackMax, blackFeather, maxChromaDiff) {
+/**
+ * Low-chroma pixels only: key near-white, near-black, and dark flat mid-tones (gray/brown/blue-gray backdrops).
+ * Saturated colors keep full alpha so food/landmark subjects are not hollowed out.
+ */
+function alphaFromFlatBackground(
+  r,
+  g,
+  b,
+  a,
+  whiteThreshold,
+  whiteFeather,
+  blackMax,
+  blackFeather,
+  maxChromaDiff,
+  flatDarkCap,
+  darkNeutralLumMax
+) {
   if (a === 0) return 0;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -123,6 +138,16 @@ function alphaFromFlatBackground(r, g, b, a, whiteThreshold, whiteFeather, black
   if (lum < blackEnd) {
     const t = (lum - blackMax) / blackFeather;
     return Math.max(0, Math.min(255, Math.round(a * t)));
+  }
+
+  // Between near-black and near-white: models often output opaque dark flat mats (lum ~60–150, max RGB capped).
+  if (max <= flatDarkCap && lum < darkNeutralLumMax) {
+    const band = darkNeutralLumMax - blackEnd;
+    if (band > 0) {
+      const rawKeep = (lum - blackEnd) / band;
+      const keep = Math.min(1, Math.max(0, Math.pow(rawKeep, 1.15)));
+      return Math.max(0, Math.min(255, Math.round(a * keep)));
+    }
   }
 
   const whiteStart = whiteThreshold - whiteFeather;
@@ -141,9 +166,11 @@ async function removeWhiteBg(pngBuf) {
   const out = Buffer.from(data);
   const whiteThreshold = 245;
   const whiteFeather = 20;
-  const blackMax = 22;
-  const blackFeather = 28;
+  const blackMax = 26;
+  const blackFeather = 32;
   const maxChromaDiff = 38;
+  const flatDarkCap = 112;
+  const darkNeutralLumMax = 152;
   for (let i = 0; i < out.length; i += 4) {
     out[i + 3] = alphaFromFlatBackground(
       out[i],
@@ -154,7 +181,9 @@ async function removeWhiteBg(pngBuf) {
       whiteFeather,
       blackMax,
       blackFeather,
-      maxChromaDiff
+      maxChromaDiff,
+      flatDarkCap,
+      darkNeutralLumMax
     );
   }
   return sharp(out, { raw: info }).png().toBuffer();
@@ -323,4 +352,3 @@ export async function POST(request) {
     return Response.json({ error: 'internal_error', message: err?.message || String(err) }, { status: 500 });
   }
 }
-
