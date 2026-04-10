@@ -110,28 +110,52 @@ function bufferToDataUrlPng(buf) {
   return `data:image/png;base64,${buf.toString('base64')}`;
 }
 
-function alphaFromWhite(r, g, b, a, threshold, feather, maxChromaDiff) {
+/** Low-chroma pixels only: fade near-white (existing) and near-black (models that ignore white-bg prompt). */
+function alphaFromFlatBackground(r, g, b, a, whiteThreshold, whiteFeather, blackMax, blackFeather, maxChromaDiff) {
   if (a === 0) return 0;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   if (max - min > maxChromaDiff) return a;
-  const whiteness = (r + g + b) / 3;
-  const start = threshold - feather;
-  if (whiteness <= start) return a;
-  if (whiteness >= threshold) return 0;
-  const keep = (threshold - whiteness) / feather;
-  return Math.max(0, Math.min(255, Math.round(a * keep)));
+  const lum = (r + g + b) / 3;
+
+  const blackEnd = blackMax + blackFeather;
+  if (lum <= blackMax) return 0;
+  if (lum < blackEnd) {
+    const t = (lum - blackMax) / blackFeather;
+    return Math.max(0, Math.min(255, Math.round(a * t)));
+  }
+
+  const whiteStart = whiteThreshold - whiteFeather;
+  if (lum >= whiteThreshold) return 0;
+  if (lum > whiteStart) {
+    const keep = (whiteThreshold - lum) / whiteFeather;
+    return Math.max(0, Math.min(255, Math.round(a * keep)));
+  }
+
+  return a;
 }
 
 async function removeWhiteBg(pngBuf) {
   const img = sharp(pngBuf, { failOn: 'none' }).ensureAlpha();
   const { data, info } = await img.raw().toBuffer({ resolveWithObject: true });
   const out = Buffer.from(data);
-  const threshold = 245;
-  const feather = 20;
+  const whiteThreshold = 245;
+  const whiteFeather = 20;
+  const blackMax = 14;
+  const blackFeather = 22;
   const maxChromaDiff = 38;
   for (let i = 0; i < out.length; i += 4) {
-    out[i + 3] = alphaFromWhite(out[i], out[i + 1], out[i + 2], out[i + 3], threshold, feather, maxChromaDiff);
+    out[i + 3] = alphaFromFlatBackground(
+      out[i],
+      out[i + 1],
+      out[i + 2],
+      out[i + 3],
+      whiteThreshold,
+      whiteFeather,
+      blackMax,
+      blackFeather,
+      maxChromaDiff
+    );
   }
   return sharp(out, { raw: info }).png().toBuffer();
 }
@@ -141,12 +165,12 @@ function stylePrompt(styleType, location, memoryTag) {
   const tag = String(memoryTag || '').trim();
   const hint = tag ? `Creative hint (do not render as text): ${tag}. ` : '';
   if (styleType === 'food') {
-    return `${IMAGE_TEXT_RULE}${hint}Travel collectible sticker, pure white background, one plated local signature food from ${loc}, hand-drawn doodle style, soft outlines. Repeat: zero text in the artwork.`;
+    return `${IMAGE_TEXT_RULE}${hint}Travel collectible sticker, flat light or pure white background only (no black or dark gray backdrop), one plated local signature food from ${loc}, hand-drawn doodle style, soft outlines. Repeat: zero text in the artwork.`;
   }
   if (styleType === 'sculpture') {
-    return `${IMAGE_TEXT_RULE}${hint}Travel collectible sticker, pure white background, one iconic landmark or sculpture from ${loc}, hand-drawn doodle style. No building signs or engraved lettering.`;
+    return `${IMAGE_TEXT_RULE}${hint}Travel collectible sticker, flat light or pure white background only (no black or dark gray backdrop), one iconic landmark or sculpture from ${loc}, hand-drawn doodle style. No building signs or engraved lettering.`;
   }
-  return `${IMAGE_TEXT_RULE}${hint}Travel fridge magnet badge for ${loc}, one concise symbolic composition, hand-drawn doodle, white background, no emblems that include writing.`;
+  return `${IMAGE_TEXT_RULE}${hint}Travel fridge magnet badge for ${loc}, one concise symbolic composition, hand-drawn doodle, flat light or white background (no black backdrop), no emblems that include writing.`;
 }
 
 function sceneLabel(styleType, location) {
