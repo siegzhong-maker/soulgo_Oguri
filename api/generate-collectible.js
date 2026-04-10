@@ -141,8 +141,8 @@ async function removeWhiteBg(pngBuf) {
   const out = Buffer.from(data);
   const whiteThreshold = 245;
   const whiteFeather = 20;
-  const blackMax = 14;
-  const blackFeather = 22;
+  const blackMax = 22;
+  const blackFeather = 28;
   const maxChromaDiff = 38;
   for (let i = 0; i < out.length; i += 4) {
     out[i + 3] = alphaFromFlatBackground(
