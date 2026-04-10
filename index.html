@@ -2358,7 +2358,7 @@
                 </button>
             </div>
         </div>
-        <div id="checkin-load-overlay" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-auto" aria-live="polite">
+        <div id="checkin-load-overlay" class="hidden absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none" aria-live="polite">
             <div class="absolute inset-0 bg-[#fffaf0]/82 backdrop-blur-[3px]"></div>
             <div class="relative z-[1] flex flex-col items-center gap-3 px-6 py-8 max-w-sm text-center">
                 <div class="checkin-load-orb w-14 h-14 rounded-full bg-gradient-to-br from-[#ffcad4] to-[#a2d2ff] shadow-lg border-4 border-white/90" aria-hidden="true"></div>
@@ -3052,6 +3052,46 @@
         return DIARY_IMG_REF_PREFIX + key;
     }
 
+    function cabinetItemImageStorageKey(item) {
+        const s = String(item.obtainedAt || '') + '\x1f' + ((item.scene && item.scene.label) || '') + '\x1f' + String(item.location || '');
+        let h = 2166136261;
+        for (let i = 0; i < s.length; i++) {
+            h ^= s.charCodeAt(i);
+            h = Math.imul(h, 16777619);
+        }
+        return 'c' + (h >>> 0).toString(16);
+    }
+
+    async function idbPutCabinetBlob(stableKey, jpegDataUrl) {
+        const db = await openDiaryImagesIdb();
+        const blob = await (await fetch(jpegDataUrl)).blob();
+        const key = 'cabinet:' + String(stableKey).replace(/[^a-zA-Z0-9]/g, '').slice(0, 120);
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(DIARY_IMG_IDB_STORE, 'readwrite');
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.objectStore(DIARY_IMG_IDB_STORE).put(blob, key);
+        });
+        db.close();
+        return DIARY_IMG_REF_PREFIX + key;
+    }
+
+    /** 橱柜/弹窗 HTML：<img> 属性片段；idb 引用用占位 + data-idb-img-ref 供 hydrate */
+    function idbImgAttrsFragmentFromSrc(src) {
+        const s = String(src || '');
+        if (!s) return 'src="assets/cabinet-empty.svg"';
+        if (isDiaryImageIdbRef(s)) {
+            return (
+                'src="' +
+                DIARY_IMG_PLACEHOLDER_PIXEL.replace(/"/g, '&quot;') +
+                '" data-idb-img-ref="' +
+                encodeURIComponent(s) +
+                '"'
+            );
+        }
+        return 'src="' + s.replace(/"/g, '&quot;') + '"';
+    }
+
     async function idbGetDiaryBlobUrl(ref) {
         if (!isDiaryImageIdbRef(ref)) return ref;
         const key = ref.slice(DIARY_IMG_REF_PREFIX.length);
@@ -3285,11 +3325,24 @@
         return false;
     }
 
+    function bindImgSrcWithIdbHydrate(imgEl, src, hydrateRoot) {
+        if (!imgEl) return;
+        const s = String(src || '');
+        if (isDiaryImageIdbRef(s)) {
+            imgEl.src = DIARY_IMG_PLACEHOLDER_PIXEL;
+            imgEl.setAttribute('data-idb-img-ref', encodeURIComponent(s));
+            if (hydrateRoot) void hydrateDiaryImagesInRoot(hydrateRoot);
+        } else {
+            imgEl.removeAttribute('data-idb-img-ref');
+            imgEl.src = s || 'assets/cabinet-empty.svg';
+        }
+    }
+
     async function hydrateDiaryImagesInRoot(root) {
         if (!root) return;
-        const imgs = root.querySelectorAll('img[data-diary-img-ref]');
+        const imgs = root.querySelectorAll('img[data-diary-img-ref], img[data-idb-img-ref]');
         for (const img of imgs) {
-            const enc = img.getAttribute('data-diary-img-ref');
+            const enc = img.getAttribute('data-diary-img-ref') || img.getAttribute('data-idb-img-ref');
             if (!enc) continue;
             let ref = '';
             try {
@@ -3302,6 +3355,7 @@
             if (blobUrl) {
                 img.src = blobUrl;
                 img.removeAttribute('data-diary-img-ref');
+                img.removeAttribute('data-idb-img-ref');
             }
         }
     }
@@ -3543,10 +3597,56 @@
                     appState.cabinetMatrixFilters = normalizeCabinetMatrixFilters(appState.cabinetMatrixFilters);
                     appState.cabinetMatrixPage = normalizeCabinetMatrixPage(appState.cabinetMatrixPage);
                     migrateEpisodicStripBlobImageUrls();
+                    void migrateCabinetItemImagesToIdb();
                 }
             }
         } catch (e) {
             console.error('Failed to load state:', e);
+        }
+    }
+
+    async function migrateCabinetItemImagesToIdb() {
+        const items = appState.cabinetItems;
+        if (!Array.isArray(items) || items.length === 0) return;
+        let changed = false;
+        for (let i = 0; i < items.length; i++) {
+            const it = items[i];
+            if (!it) continue;
+            if (it.scene && typeof it.scene.image === 'string' && it.scene.image.startsWith('data:')) {
+                try {
+                    const sk = cabinetItemImageStorageKey(it);
+                    const compressed = await compressDiaryImageDataUrl(it.scene.image);
+                    const ref = await idbPutCabinetBlob(sk, compressed);
+                    it.scene = { ...it.scene, image: ref };
+                    changed = true;
+                } catch (e) {
+                    console.warn('[Cabinet] migrate data URL to IDB failed for item', i, e);
+                }
+            }
+            if (it.type === 'furniture' && typeof it.image === 'string' && it.image.startsWith('data:')) {
+                try {
+                    const sk = 'f' + cabinetItemImageStorageKey({
+                        obtainedAt: it.obtainedAt || '',
+                        scene: { label: it.name || '' },
+                        location: it.source_location || it.obtainedLocation || ''
+                    });
+                    const compressed = await compressDiaryImageDataUrl(it.image);
+                    const ref = await idbPutCabinetBlob(sk, compressed);
+                    it.image = ref;
+                    changed = true;
+                } catch (e) {
+                    console.warn('[Cabinet] migrate furniture image to IDB failed', e);
+                }
+            }
+        }
+        if (changed) {
+            try {
+                saveState();
+            } catch (e) {
+                console.warn('[Cabinet] saveState after IDB migrate:', e);
+            }
+            if (typeof renderCabinetGrid === 'function') renderCabinetGrid();
+            if (typeof renderMemoryWall === 'function') renderMemoryWall();
         }
     }
     
@@ -3931,14 +4031,18 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     const checkinLoadOverlay = document.getElementById('checkin-load-overlay');
     const checkinLoadStatusEl = document.getElementById('checkin-load-status');
     function setCheckinLoadingUi(active, message) {
-        if (!checkinLoadOverlay) return;
         if (active) {
-            checkinLoadOverlay.classList.remove('hidden');
-            checkinLoadOverlay.setAttribute('aria-busy', 'true');
-            if (checkinLoadStatusEl && message) checkinLoadStatusEl.textContent = message;
+            if (checkinLoadOverlay) {
+                checkinLoadOverlay.classList.remove('hidden');
+                checkinLoadOverlay.setAttribute('aria-busy', 'true');
+                if (checkinLoadStatusEl && message) checkinLoadStatusEl.textContent = message;
+            }
+            if (checkinToast && message) checkinToast.textContent = message;
         } else {
-            checkinLoadOverlay.classList.add('hidden');
-            checkinLoadOverlay.removeAttribute('aria-busy');
+            if (checkinLoadOverlay) {
+                checkinLoadOverlay.classList.add('hidden');
+                checkinLoadOverlay.removeAttribute('aria-busy');
+            }
         }
     }
     const checkinListPanel = document.getElementById('checkin-list-panel');
@@ -6079,6 +6183,24 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         return rows;
     }
 
+    async function parseManifestJsonResponse(response) {
+        if (!response || !response.ok) return null;
+        let text;
+        try {
+            text = await response.text();
+        } catch {
+            return null;
+        }
+        const t = (text || '').trim();
+        if (!t || (t.charAt(0) !== '{' && t.charAt(0) !== '[')) return null;
+        try {
+            const data = JSON.parse(t);
+            return Array.isArray(data) ? data : (data.items || []);
+        } catch {
+            return null;
+        }
+    }
+
     async function loadGeneratedBadgeManifestAndMerge() {
         const baselineScenes = soulgoGeneratedBadgeScenes.length;
         const health = {
@@ -6101,9 +6223,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             health.aigcCutoutsStatus = cr.status;
             health.aigcCutoutsOk = cr.ok;
             if (cr.ok) {
-                const cdata = await cr.json();
-                const clist = Array.isArray(cdata) ? cdata : (cdata.items || []);
-                applyGeneratedBadgeManifestEntries(clist);
+                const clist = await parseManifestJsonResponse(cr);
+                if (clist && clist.length) applyGeneratedBadgeManifestEntries(clist);
             }
 
             // 兼容：场景/generated/badges/manifest.json
@@ -6111,9 +6232,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             health.badgesStatus = r.status;
             health.badgesOk = r.ok;
             if (r.ok) {
-                const data = await r.json();
-                const list = Array.isArray(data) ? data : (data.items || []);
-                applyGeneratedBadgeManifestEntries(list);
+                const list = await parseManifestJsonResponse(r);
+                if (list && list.length) applyGeneratedBadgeManifestEntries(list);
             }
 
             // 主清单：pet-home-assets（全国城市场景）；失败时重试一次降低 CDN/偶发网络空池
@@ -6127,9 +6247,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
             health.petHomeOk = pr.ok;
             if (pr.ok) {
-                const pdata = await pr.json();
+                const pdata = await parseManifestJsonResponse(pr);
                 const autoEntries = buildEntriesFromPetHomeManifest(Array.isArray(pdata) ? pdata : []);
-                applyGeneratedBadgeManifestEntries(autoEntries);
+                if (autoEntries.length) applyGeneratedBadgeManifestEntries(autoEntries);
             }
 
             health.mergedEntryDelta = soulgoGeneratedBadgeScenes.length - baselineScenes;
@@ -7433,11 +7553,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const metaLine = `<span class="block text-[9px] text-[#8d7f73] mt-0.5 leading-snug line-clamp-2">${escapeHtml(locShort || '旅行记忆')}${whenShort ? ` · ${escapeHtml(whenShort)}` : ''}</span>`;
         if (item.type === 'furniture') {
             const fullLabel = item.name || '纪念品';
-            const imgSrc = item.image;
+            const imgAttrs = idbImgAttrsFragmentFromSrc(item.image);
             return `
                 <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
                     ${badgeCorner}
-                    <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm rounded-xl border border-[#d4c4a8]"></div>
+                    <div class="cabinet-slot__media"><img ${imgAttrs} alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm rounded-xl border border-[#d4c4a8]"></div>
                     <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(fullLabel)}</span>
                     <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#fff5f0] text-[#8b5a3c] border border-[#e8d4c4] mt-1">#${escapeHtml(catLabel)}</span>
                     ${metaLine}
@@ -7445,7 +7565,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
         if (item.scene || item.location) {
             const { short: shortLabel, full: fullLabel } = getShortLabel(item);
-            const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+            const imgAttrs = idbImgAttrsFragmentFromSrc(item.scene ? item.scene.image : '');
             const ragSource = item.source && typeof item.source === 'object' && item.source.kind === 'rag_unlock'
                 ? item.source
                 : null;
@@ -7455,7 +7575,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             return `
                 <div class="cabinet-slot bg-white/50 backdrop-blur-sm cursor-pointer relative" data-item-index="${origIdx}">
                     ${badgeCorner}
-                    <div class="cabinet-slot__media"><img src="${imgSrc}" alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm"></div>
+                    <div class="cabinet-slot__media"><img ${imgAttrs} alt="${escapeHtml(fullLabel)}" class="drop-shadow-sm"></div>
                     <span class="w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span>
                     <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#fff5f0] text-[#8b5a3c] border border-[#e8d4c4] mt-1">#${escapeHtml(catLabel)}</span>
                     ${metaLine}
@@ -7595,7 +7715,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             : '';
         return `
             <button type="button" class="collect-matrix-cell relative w-full min-h-[56px] min-w-[56px] rounded-xl border border-[#eaddcf] bg-[#fdfbf7] shadow-sm flex items-center justify-center p-1.5 active:scale-[0.98] transition-transform" data-orig-indices="${indices}" title="${escapeHtml(cellTitle)}">
-                <img src="${thumb.replace(/"/g, '%22')}" alt="" class="w-11 h-11 rounded-lg object-cover pointer-events-none" loading="lazy">
+                <img ${idbImgAttrsFragmentFromSrc(thumb)} alt="" class="w-11 h-11 rounded-lg object-cover pointer-events-none" loading="lazy">
                 ${badge}
             </button>`;
     }
@@ -7681,7 +7801,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     else if (it.scene && it.scene.image) thumb = it.scene.image;
                     cells.push(
                         `<button type="button" class="collect-matrix-100-cell collect-matrix-100-cell--filled collect-matrix-100-cell--clickable" data-matrix-item-index="${entry.origIdx}">
-                            <img src="${thumb.replace(/"/g, '%22')}" alt="" class="collect-matrix-100-thumb">
+                            <img ${idbImgAttrsFragmentFromSrc(thumb)} alt="" class="collect-matrix-100-thumb">
                         </button>`
                     );
                 } else {
@@ -7750,7 +7870,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             const metaWhen = formatCabinetObtainedAtDisplay(item.obtainedAt);
             const cat = getCollectCategoryDisplayLabel(resolveCollectCategory(item));
             return `<button type="button" class="w-full flex items-center gap-3 p-2 rounded-xl border border-[#eaddcf] bg-[#fdfbf7] text-left active:scale-[0.99] transition-transform collect-matrix-picker-row" data-item-index="${origIdx}">
-                <img src="${thumb.replace(/"/g, '%22')}" alt="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-[#d4c4a8]">
+                <img ${idbImgAttrsFragmentFromSrc(thumb)} alt="" class="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-[#d4c4a8]">
                 <span class="min-w-0">
                     <span class="block text-xs font-bold text-[#5c4a3a] line-clamp-2">${escapeHtml(label)}</span>
                     <span class="block text-[10px] text-[#8d7f73] line-clamp-1">${escapeHtml(metaLoc || '旅行记忆')}${metaWhen ? ` · ${escapeHtml(metaWhen)}` : ''}</span>
@@ -7765,11 +7885,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 <button type="button" class="text-sm text-[#8d7f73] underline hover:opacity-80 mt-1" id="btn-back-cabinet-matrix-picker">返回图鉴</button>
             </div>`;
         modalBody.innerHTML = pickerHTML;
+        void hydrateDiaryImagesInRoot(modalBody);
         const back = document.getElementById('btn-back-cabinet-matrix-picker');
         if (back) {
             back.addEventListener('click', () => {
                 if (lastCabinetBodyHTML) {
                     openModal('旅行见闻柜', lastCabinetBodyHTML, 'cabinet');
+                    void hydrateDiaryImagesInRoot(modalBody);
                     applyCabinetModalSegment('matrix');
                 }
             });
@@ -7995,6 +8117,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
         lastCabinetBodyHTML = bodyHTML;
         openModal('旅行见闻柜', bodyHTML, 'cabinet');
+        void hydrateDiaryImagesInRoot(modalBody);
 
         applyCabinetModalSegment('tier');
 
@@ -8203,7 +8326,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             <div class="cabinet-item-detail cabinet-detail-grid no-scrollbar">
                 <div class="cabinet-detail-art-column">
                     <div class="cabinet-detail-artframe">
-                        <img src="${imgSrc}" alt="${escapeHtml(fullLabel)}">
+                        <img ${idbImgAttrsFragmentFromSrc(imgSrc)} alt="${escapeHtml(fullLabel)}">
                     </div>
                 </div>
                 <div class="cabinet-detail-info-column">
@@ -8244,6 +8367,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             openModal(modalHeading, detailHTML, 'cabinet');
             if (modalPanel) modalPanel.setAttribute('data-cabinet-subview', 'detail');
         }
+        void hydrateDiaryImagesInRoot(modalBody);
 
         // Bind buttons
         const backBtn = document.getElementById('btn-back-cabinet');
@@ -10584,8 +10708,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 <img src="assets/UI/UI界面1-3.png" alt="Location Map" class="absolute inset-0 w-full h-full object-cover">
                 <div class="absolute inset-0 flex items-center justify-center p-2">
                     <img
-                        src="${scene.image}"
-                        alt="${scene.label}"
+                        ${idbImgAttrsFragmentFromSrc(scene.image)}
+                        alt="${escapeHtml(scene.label || '')}"
                         class="w-10 h-10 rounded-lg object-contain bg-white/80 shadow-md border border-white"
                     >
                 </div>
@@ -10597,7 +10721,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 return `
             <div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
                 <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
-                ${reward.scene.image ? `<img src="${reward.scene.image}" alt="${reward.scene.label || 'collectible'}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
+                ${reward.scene.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.scene.image)} alt="${escapeHtml(reward.scene.label || 'collectible')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
                 <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.scene.label || '远行场景')}</span>
             </div>`;
             }
@@ -10605,7 +10729,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 return `
             <div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
                 <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
-                ${reward.image ? `<img src="${reward.image}" alt="${escapeHtml(reward.name || '纪念品')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
+                ${reward.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.image)} alt="${escapeHtml(reward.name || '纪念品')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
                 <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-violet-100 text-violet-800 border border-violet-200"><i class="ph-fill ph-paint-brush text-[8px]"></i> 日常灵感</span>
                 <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.name || '灵感小物')}</span>
             </div>`;
@@ -10654,6 +10778,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             el.classList.remove('hidden');
             el.innerHTML = aigcBoot;
         });
+        if (diaryList) void hydrateDiaryImagesInRoot(diaryList);
         if (diaryBadge) diaryBadge.classList.remove('hidden'); // 显示日记未读红点
         if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
         return { diaryId, date };
@@ -10893,7 +11018,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             if (!item.scene && !item.location) return;
             
             const { short: shortLabel, full: fullLabel } = getShortLabel(item);
-            const imgSrc = item.scene ? item.scene.image : 'assets/cabinet-empty.svg';
+            const imgAttrs = idbImgAttrsFragmentFromSrc(item.scene ? item.scene.image : '');
             
             const div = document.createElement('div');
             div.className = 'polaroid-photo';
@@ -10909,7 +11034,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             div.style.zIndex = index + 1;
             
             div.innerHTML = `
-                <img src="${imgSrc}" alt="${escapeHtml(fullLabel)}">
+                <img ${imgAttrs} alt="${escapeHtml(fullLabel)}">
                 <span>${escapeHtml(shortLabel)}</span>
             `;
             
@@ -10920,6 +11045,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             
             wall.appendChild(div);
         });
+        void hydrateDiaryImagesInRoot(wall);
     }
 
     function getCurrentTimeSlot() {
@@ -12358,13 +12484,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             if (item.type === 'furniture') {
                 fullLabel = item.name;
                 shortLabel = item.name;
-                imgHtml = `<img src="${item.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm">`;
+                imgHtml = `<img ${idbImgAttrsFragmentFromSrc(item.image)} alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm">`;
             } else {
                 const scene = item.scene;
                 const sl = getShortLabel(item);
                 fullLabel = sl.full;
                 shortLabel = sl.short;
-                imgHtml = scene ? `<img src="${scene.image}" alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
+                imgHtml = scene ? `<img ${idbImgAttrsFragmentFromSrc(scene.image)} alt="${escapeHtml(fullLabel)}" class="w-12 h-12 rounded-xl object-cover border border-[#d4c4a8] shadow-sm" onerror="this.style.display='none';this.nextElementSibling&&this.nextElementSibling.classList.remove('hidden');">` : '';
                 fallbackHtml = scene ? `<span class="text-2xl hidden">🧳</span>` : `<span class="text-2xl">🧳</span>`;
             }
             return `<div class="cabinet-slot relative cursor-pointer" data-cabinet-item="true" data-item-index="${origIdx}">${badgeCorner}<div class="cabinet-slot__media">${imgHtml}${fallbackHtml}</div><span class="font-bold w-full min-w-0 line-clamp-3 text-center" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel)}</span></div>`;
@@ -12413,6 +12539,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
 
         cabinetGrid.innerHTML = html;
+        void hydrateDiaryImagesInRoot(cabinetGrid);
     }
 
     function escapeHtml(s) {
@@ -12461,7 +12588,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     thumbScene && thumbScene.image
                         ? `<div class="absolute inset-0 flex items-center justify-center p-2">
                                <img
-                                   src="${thumbScene.image}"
+                                   ${idbImgAttrsFragmentFromSrc(thumbScene.image)}
                                    alt="${escapeHtml(thumbScene.label || '')}"
                                    class="w-10 h-10 rounded-lg object-contain bg-white/80 shadow-md border border-white"
                                >
@@ -12499,13 +12626,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                             (reward && reward.kind === 'scene' && reward.scene && (reward.scene.image || reward.scene.label))
                                 ? `<div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
                                         <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
-                                        ${reward.scene.image ? `<img src="${reward.scene.image}" alt="${escapeHtml(reward.scene.label || 'collectible')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
+                                        ${reward.scene.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.scene.image)} alt="${escapeHtml(reward.scene.label || 'collectible')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
                                         <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.scene.label || '远行场景')}</span>
                                    </div>`
                                 : (reward && reward.kind === 'furniture' && (reward.image || reward.name))
                                 ? `<div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
                                         <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
-                                        ${reward.image ? `<img src="${reward.image}" alt="${escapeHtml(reward.name || '纪念品')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
+                                        ${reward.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.image)} alt="${escapeHtml(reward.name || '纪念品')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
                                         <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-violet-100 text-violet-800 border border-violet-200"><i class="ph-fill ph-paint-brush text-[8px]"></i> 日常灵感</span>
                                         <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.name || '灵感小物')}</span>
                                    </div>`
@@ -12580,35 +12707,51 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
     function addCabinetItem(location, sceneOverride, tierOverride, sourceOverride) {
         if (!cabinetGrid) return;
-        const scene = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
-        if (!scene) return;
+        const sceneBase = sceneOverride !== undefined ? sceneOverride : getSceneAsset(location);
+        if (!sceneBase) return;
         appState.cabinetItems = appState.cabinetItems || [];
         if (appState.cabinetItems.length >= CABINET_SLOTS) return;
 
-        const tier = tierOverride || (scene && scene.tier) || 'C';
-        const source = sourceOverride || (scene && scene.source) || 'checkin';
-        const collectCategory = resolveCollectCategoryFromScene(scene);
-        const assetSource = pickAssetSourceForNewSceneItem(sourceOverride, scene);
-        const scarcity = PRESTIGE_ASSET_SOURCES.has(assetSource) ? ASSET_SCARCITY.LIMITED : ASSET_SCARCITY.UNLIMITED;
-        appState.cabinetItems.unshift({
-            location,
-            scene,
-            tier,
-            source,
-            collectCategory,
-            assetSource,
-            scarcity,
-            resolvedSourceType: scene.resolvedSourceType || inferSceneSourceType(scene),
-            intentTags: Array.isArray(scene.intentTags) ? scene.intentTags.slice(0, 8) : [],
-            ragEvidence: Array.isArray(scene.ragEvidence) ? scene.ragEvidence.slice(0, 6) : [],
-            profileEvidence: Array.isArray(scene.profileEvidence) ? scene.profileEvidence.slice(0, 6) : [],
-            obtainedAt: new Date().toISOString(),
-            obtainedLocation: location || (scene && scene.regionLabel) || '旅行记忆'
-        });
-        appState.cabinetHasNewUnseen = true;
-        renderCabinetGrid();
-        renderMemoryWall(); // 同步更新墙面
-        saveState();
+        void (async () => {
+            let scene = Object.assign({}, sceneBase);
+            const obtainedAt = new Date().toISOString();
+            if (scene.image && typeof scene.image === 'string' && scene.image.startsWith('data:')) {
+                try {
+                    const tmpItem = { location, scene, obtainedAt };
+                    const sk = cabinetItemImageStorageKey(tmpItem);
+                    const compressed = await compressDiaryImageDataUrl(scene.image);
+                    const ref = await idbPutCabinetBlob(sk, compressed);
+                    scene = Object.assign({}, scene, { image: ref });
+                } catch (err) {
+                    console.warn('[Cabinet] IDB offload of scene image failed (may hit localStorage quota):', err);
+                }
+            }
+
+            const tier = tierOverride || (scene && scene.tier) || 'C';
+            const source = sourceOverride || (scene && scene.source) || 'checkin';
+            const collectCategory = resolveCollectCategoryFromScene(scene);
+            const assetSource = pickAssetSourceForNewSceneItem(sourceOverride, scene);
+            const scarcity = PRESTIGE_ASSET_SOURCES.has(assetSource) ? ASSET_SCARCITY.LIMITED : ASSET_SCARCITY.UNLIMITED;
+            appState.cabinetItems.unshift({
+                location,
+                scene,
+                tier,
+                source,
+                collectCategory,
+                assetSource,
+                scarcity,
+                resolvedSourceType: scene.resolvedSourceType || inferSceneSourceType(scene),
+                intentTags: Array.isArray(scene.intentTags) ? scene.intentTags.slice(0, 8) : [],
+                ragEvidence: Array.isArray(scene.ragEvidence) ? scene.ragEvidence.slice(0, 6) : [],
+                profileEvidence: Array.isArray(scene.profileEvidence) ? scene.profileEvidence.slice(0, 6) : [],
+                obtainedAt,
+                obtainedLocation: location || (scene && scene.regionLabel) || '旅行记忆'
+            });
+            appState.cabinetHasNewUnseen = true;
+            renderCabinetGrid();
+            renderMemoryWall();
+            saveState();
+        })();
     }
 
     // --- 辅助函数：地图页打卡预览（物品 + 日记，图片在「查看完整日记」中展示） ---
@@ -12661,7 +12804,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
         const itemBlock = scene ? `
             <div class="glass-card rounded-2xl p-3 flex items-center gap-3 animate-[fadeIn_0.4s_ease-out]">
-                <img src="${scene.image}" alt="${escapeHtml(scene.label)}" class="w-16 h-16 rounded-xl object-cover border border-white shadow-sm ${shakeClass}">
+                <img ${idbImgAttrsFragmentFromSrc(scene.image)} alt="${escapeHtml(scene.label)}" class="w-16 h-16 rounded-xl object-cover border border-white shadow-sm ${shakeClass}">
                 <div class="flex flex-col">
                     <span class="text-[10px] font-bold text-gray-500">解锁远行场景</span>
                     <span class="text-sm font-bold text-gray-800">${escapeHtml(scene.label)}</span>
@@ -12696,6 +12839,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         `);
         scenePreview.innerHTML = parts.join('');
         scenePreview.classList.remove('hidden');
+        void hydrateDiaryImagesInRoot(scenePreview);
 
         const backBtn = document.getElementById('btn-after-checkin-back-petroom');
         if (backBtn) {
@@ -12902,7 +13046,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 };
             currentRewardItem._alreadyInCabinet = true;
             if (titleEl) titleEl.textContent = '✨ 解锁远行场景 ✨';
-            img.src = item.scene.image;
+            bindImgSrcWithIdbHydrate(img, item.scene.image, modal);
             name.textContent = item.scene.label || '远行场景';
             const tier = (item.tier || 'C').toUpperCase();
             const tc = TIER_CONFIG[tier] || TIER_CONFIG.C;
@@ -12949,7 +13093,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             };
             if (panel) panel.classList.add('ui-reward-panel--daily');
             if (titleEl) titleEl.textContent = '收到一件灵感小物';
-            img.src = item.image_url;
+            bindImgSrcWithIdbHydrate(img, item.image_url, modal);
             name.textContent = item.item_name || '神秘纪念品';
             if (badgesEl) {
                 const ui = ASSET_SOURCE_UI.ai_daily;
@@ -13009,12 +13153,30 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     function addFurnitureToCabinet(item) {
         appState.cabinetItems = appState.cabinetItems || [];
         if (appState.cabinetItems.length >= CABINET_SLOTS) return;
-        if (item && !item.collectCategory) item.collectCategory = COLLECT_CATEGORY_FALLBACK_ID;
-        if (item && !item.obtainedAt) item.obtainedAt = new Date().toISOString();
-        if (item && !item.obtainedLocation) item.obtainedLocation = resolveObtainedLocation(item);
-        appState.cabinetItems.unshift(item);
-        renderCabinetGrid();
-        saveState();
+        if (!item) return;
+        const copy = Object.assign({}, item);
+        if (!copy.collectCategory) copy.collectCategory = COLLECT_CATEGORY_FALLBACK_ID;
+        if (!copy.obtainedAt) copy.obtainedAt = new Date().toISOString();
+        if (!copy.obtainedLocation) copy.obtainedLocation = resolveObtainedLocation(copy);
+
+        void (async () => {
+            if (copy.image && typeof copy.image === 'string' && copy.image.startsWith('data:')) {
+                try {
+                    const sk = 'f' + cabinetItemImageStorageKey({
+                        obtainedAt: copy.obtainedAt || '',
+                        scene: { label: copy.name || '' },
+                        location: copy.source_location || copy.obtainedLocation || ''
+                    });
+                    const compressed = await compressDiaryImageDataUrl(copy.image);
+                    copy.image = await idbPutCabinetBlob(sk, compressed);
+                } catch (err) {
+                    console.warn('[Cabinet] furniture image IDB offload failed:', err);
+                }
+            }
+            appState.cabinetItems.unshift(copy);
+            renderCabinetGrid();
+            saveState();
+        })();
     }
 
     // 将家具/收集物放置到房间（数据层面）
