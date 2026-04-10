@@ -2334,6 +2334,16 @@
                     </button>
                 </div>
                 <p id="checkin-toast" class="mt-2 text-[11px] text-gray-500 min-h-[1.25rem]"></p>
+                <!-- 打卡加载：卡片内横条，不占底部悬浮层，不挡「返回宠物小屋」 -->
+                <div id="checkin-load-banner" class="mt-2 hidden rounded-2xl border border-[#ff8fab]/35 bg-white/90 px-3 py-2 shadow-sm backdrop-blur-sm" aria-live="polite" role="status">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="checkin-load-orb h-8 w-8 flex-shrink-0 rounded-full border-2 border-white/90 bg-gradient-to-br from-[#ffcad4] to-[#a2d2ff] shadow-sm" aria-hidden="true"></div>
+                        <div class="min-w-0 flex-1">
+                            <p id="checkin-load-status" class="text-xs font-bold leading-snug text-gray-800">正在处理…</p>
+                            <p id="checkin-load-subline" class="text-[10px] text-gray-500 leading-snug mt-0.5">小爪子在飞奔，请稍等一小会儿</p>
+                        </div>
+                    </div>
+                </div>
                 <div id="ble-toolbar" class="mt-3 flex flex-wrap items-center gap-2">
                     <button type="button" id="btn-ble-connect" class="text-xs font-bold px-3 py-1.5 rounded-full bg-white/90 border border-[#cddccf] text-gray-700 hover:bg-[#e6f1e8] transition active:scale-95">
                         连接设备
@@ -2749,17 +2759,6 @@
                 <button id="btn-reward-place" class="ui-reward-btn ui-reward-btn--primary" style="--btn-bg: url('assets/UI/UI界面2-1.png')">
                     <span>立即摆放</span>
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 打卡加载：相对 app 壳底部，pointer-events-none 全链路，不挡地图与输入；z 低于 reward-modal z-[70] -->
-    <div id="checkin-load-banner" class="pointer-events-none absolute left-3 right-3 z-[65] hidden bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" aria-live="polite" role="status">
-        <div class="pointer-events-none mx-auto flex max-w-lg items-center gap-3 rounded-2xl border-2 border-[#ff8fab]/40 bg-white/95 px-4 py-3 shadow-xl backdrop-blur-sm ring-1 ring-[#a2d2ff]/25">
-            <div class="checkin-load-orb h-10 w-10 flex-shrink-0 rounded-full border-[3px] border-white/90 bg-gradient-to-br from-[#ffcad4] to-[#a2d2ff] shadow-md" aria-hidden="true"></div>
-            <div class="min-w-0 flex-1 text-left">
-                <p id="checkin-load-status" class="text-sm font-bold leading-snug text-gray-800">正在处理…</p>
-                <p class="text-[11px] text-gray-500">小爪子在飞奔，请稍等一小会儿</p>
             </div>
         </div>
     </div>
