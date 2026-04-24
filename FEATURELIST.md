@@ -345,7 +345,7 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 - **`GET /api/debug-memories`**：调试用：查看向量记忆池最近 N 条
 - **`POST /api/generate-image`**：生成日记配图
 - **`POST /api/generate-furniture`**：生成家具资产
-- **`POST /api/diary-image-comment`**：日记插图相关短评；使用 soul 短摘要 + 可选 `semanticProfileSnapshot`
+- **`POST /api/diary-image-comment`**：日记插图相关短评；使用 soul 短摘要 + 可选 `semanticProfileSnapshot`。请求体带 `diaryImageMode: "collectibleScore"` 时同一路由返回物品/情绪关键词 JSON（原独立 `diary-collectible-score` 已合并，避免超过 Vercel Hobby serverless 数量上限）
 - **`POST /api/pet/decide`**：宠物自主行为意图（OpenRouter）；使用 soul 短摘要；前端通过 `window.PET_DECIDE_API_URL` 指向（默认 `/api/pet/decide`）
 - **`POST /api/chat`**：OpenRouter 透传代理（通用）
 

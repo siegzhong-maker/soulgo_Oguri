@@ -6928,7 +6928,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         return scored[scored.length - 1].s;
     }
 
-    const DIARY_COLLECTIBLE_SCORE_API = '/api/diary-collectible-score';
+    /** 与 Soul 点评共用 /api/diary-image-comment，省 Vercel Hobby 的 serverless 数量上限 */
+    const DIARY_COLLECTIBLE_SCORE_API = '/api/diary-image-comment';
 
     function getObtainedSceneLabelSet() {
         return new Set((appState.cabinetItems || []).map((i) => (i.scene && i.scene.label) || '').filter(Boolean));
@@ -7153,6 +7154,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             const personality = appState.petPersonality || '小粟';
             const pCfg = PERSONALITY_TYPES[personality] || {};
             const payload = {
+                diaryImageMode: 'collectibleScore',
                 location,
                 diaryTextSnippet: getDiaryTextSnippetForComment(id),
                 petPersonality: personality,

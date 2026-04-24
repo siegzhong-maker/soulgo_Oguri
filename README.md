@@ -86,7 +86,7 @@
 | `api/embed-and-store.js` / `api/retrieve.js` | 向量写入与检索 |
 | `api/debug-memories.js` | 调试：查看内存向量池 |
 | `api/generate-image.js` / `generate-collectible.js` / `generate-furniture.js` | 配图与资产生成 |
-| `api/diary-image-comment.js` | 日记插图 Soul 风格点评 |
+| `api/diary-image-comment.js` | 日记多模态图：默认 Soul 短评；`diaryImageMode: "collectibleScore"` 时返回收集物打分 JSON（与点评合并为同一 serverless，满足 Vercel Hobby 12 函数上限） |
 | `api/pet/decide.js` | 宠物行为决策 |
 | `api/load-soul.js` | 供其他 API 读取 `soul.md` |
 | `lib/memory-vector-store.js` | 内存向量存储实现 |
