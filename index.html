@@ -10555,16 +10555,38 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         return String(t).replace(/\s+/g, ' ').trim().slice(0, 160);
     }
 
+    function inferEmotionHintFromSnippet(snippet) {
+        const s = String(snippet || '');
+        if (!s) return '平静记录';
+        if (/(开心|高兴|兴奋|惊喜|治愈|好吃|满足|可爱)/.test(s)) return '偏开心';
+        if (/(想念|怀念|回忆|旧时|以前|从前)/.test(s)) return '偏怀念';
+        if (/(累|疲惫|压力|难过|低落|孤单|失落)/.test(s)) return '有点疲惫';
+        if (/(好奇|探索|试试|第一次|发现)/.test(s)) return '偏好奇';
+        return '平静记录';
+    }
+
     function soulCommentBodyClass() {
         return 'diary-soul-comment-body mt-1 w-full max-w-full min-w-0 flex-1 min-h-0 overflow-y-auto break-words rounded-lg bg-[#fffaf0]/90 border border-[#8d6e63]/20 px-2 py-1.5 text-[11px] leading-snug text-[#5d4037]';
     }
 
     function buildSoulCommentEvidenceHTML(diaryId, imageIndex) {
         const snippet = getDiaryTextSnippetForComment(diaryId);
+        const location = getDiaryLocationForDiaryImage(diaryId);
+        const emotionHint = inferEmotionHintFromSnippet(snippet);
         const tags = []; // 预留：后续可根据日记情绪/议题打标签，这里先做 UI 占位
         const hasSnippet = !!snippet;
         if (!hasSnippet) {
-            return '<div class="mb-1 text-[10px] text-[#8d6e63]/70 flex items-center gap-1"><span class="inline-block w-1.5 h-1.5 rounded-full bg-[#ff8fab]"></span><span>我先翻了一下这篇日记，再慢慢说给你听。</span></div>';
+            return (
+                '<div class="mb-1 text-[10px] text-[#8d6e63]/80 flex flex-col gap-0.5">' +
+                    '<div class="flex items-center gap-1"><span class="inline-block w-1.5 h-1.5 rounded-full bg-[#ff8fab]"></span><span><span class="font-semibold">地点线索：</span>' +
+                    (location ? escapeHtml(location) : '未填写') +
+                    '</span></div>' +
+                    '<div class="flex items-center gap-1"><span class="inline-block w-1.5 h-1.5 rounded-full bg-[#a2d2ff]"></span><span><span class="font-semibold">情绪线索：</span>' +
+                    escapeHtml(emotionHint) +
+                    '</span></div>' +
+                    '<div class="flex items-center gap-1 text-[#8d6e63]/70"><span class="inline-block w-1.5 h-1.5 rounded-full bg-[#f4a261]"></span><span>我先翻了一下这篇日记，再慢慢说给你听。</span></div>' +
+                '</div>'
+            );
         }
         const tagsHtml = tags.length
             ? '<span class="inline-flex items-center gap-1 text-[9px] text-[#8d6e63]"><span class="opacity-60">·</span><span>' +
@@ -10573,6 +10595,14 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             : '';
         return (
             '<div class="mb-1 text-[10px] text-[#8d6e63]/80 flex flex-col gap-0.5">' +
+                '<div class="flex items-center gap-1">' +
+                    '<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#ff8fab]"></span>' +
+                    '<span><span class="font-semibold">地点线索：</span>' + (location ? escapeHtml(location) : '未填写') + '</span>' +
+                '</div>' +
+                '<div class="flex items-center gap-1">' +
+                    '<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#a2d2ff]"></span>' +
+                    '<span><span class="font-semibold">情绪线索：</span>' + escapeHtml(emotionHint) + '</span>' +
+                '</div>' +
                 '<div class="flex items-center gap-1">' +
                     '<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#ff8fab]"></span>' +
                     '<span class="font-semibold">我看到你这段：</span>' +
