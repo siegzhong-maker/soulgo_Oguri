@@ -2346,6 +2346,20 @@
                 </div>
                 <div class="checkin-feedback-stack mt-2 flex flex-col gap-1.5">
                     <p id="checkin-toast" class="text-[11px] text-gray-500"></p>
+                    <div id="mvp-sim-day-panel" class="rounded-2xl border border-dashed border-[#c8b8a8]/60 bg-[#fffaf5]/90 px-3 py-2 text-[10px] text-[#5d4037]">
+                        <div class="font-bold mb-1 flex items-center gap-1 text-[#6d4c41]">
+                            <i class="ph-fill ph-calendar-blank" aria-hidden="true"></i> MVP 模拟天
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span>当前第 <strong id="mvp-sim-day-display">0</strong> 天（每成功打卡 +1）</span>
+                            <input type="number" min="0" id="mvp-sim-day-input" class="w-16 rounded-lg border border-gray-200 px-1.5 py-0.5 text-[10px] bg-white" value="0" aria-label="模拟天数" />
+                            <button type="button" id="mvp-sim-day-set" class="px-2 py-0.5 rounded-lg bg-[#8d6e63]/15 text-[10px] font-bold hover:bg-[#8d6e63]/25">设为该天</button>
+                        </div>
+                        <label class="mt-1.5 flex items-start gap-2 cursor-pointer">
+                            <input type="checkbox" id="mvp-partner-white-rabbit" class="mt-0.5 flex-shrink-0" />
+                            <span>上海 · 大白兔合作限定（命中上海时优先掉落合作款）</span>
+                        </label>
+                    </div>
                     <!-- 打卡加载：卡片内横条，不占底部悬浮层，不挡「返回宠物小屋」 -->
                     <div id="checkin-load-banner" class="hidden rounded-2xl border border-[#ff8fab]/35 bg-white/90 px-3 py-2 shadow-sm backdrop-blur-sm" aria-live="polite" role="status">
                         <div class="flex items-center gap-2.5 min-w-0">
@@ -2857,7 +2871,15 @@
         // 图鉴分页（1-based）
         cabinetMatrixPage: 1,
         // 见闻柜 Tab：陈列 tier / 图鉴 matrix（重开 modal 后仍保持，且与 async 重绘顺序无关）
-        cabinetModalSegment: 'tier'
+        cabinetModalSegment: 'tier',
+        // MVP：每成功打卡 +1，可在打卡面板改「第 N 天」做演示
+        simulatedDayIndex: 0,
+        // 每篇日记仅一次「从配图区获取收集物」
+        diaryCollectibleClaim: {},
+        flags: {
+            /** 上海打卡 / 上海日记收集物时 100% 出合作款（见 PARTNER_WHITE_RABBIT_SHANGHAI） */
+            partnerWhiteRabbitShanghai: false
+        }
     };
 
     // --- soul.md：与仓库根目录 soul.md 同源；供档案 UI 与 semanticProfile 兜底 ---
@@ -3686,6 +3708,17 @@
                     appState.cabinetMatrixPage = normalizeCabinetMatrixPage(appState.cabinetMatrixPage);
                     if (appState.cabinetModalSegment !== 'matrix' && appState.cabinetModalSegment !== 'tier') {
                         appState.cabinetModalSegment = 'tier';
+                    }
+                    if (typeof appState.simulatedDayIndex !== 'number' || appState.simulatedDayIndex < 0) {
+                        appState.simulatedDayIndex = 0;
+                    }
+                    if (!appState.diaryCollectibleClaim || typeof appState.diaryCollectibleClaim !== 'object') {
+                        appState.diaryCollectibleClaim = {};
+                    }
+                    if (!appState.flags || typeof appState.flags !== 'object') {
+                        appState.flags = { partnerWhiteRabbitShanghai: false };
+                    } else if (typeof appState.flags.partnerWhiteRabbitShanghai !== 'boolean') {
+                        appState.flags.partnerWhiteRabbitShanghai = false;
                     }
                     migrateEpisodicStripBlobImageUrls();
                     void (async () => {
@@ -5990,6 +6023,38 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
     }
 
+    function syncMvpSimDayPanel() {
+        const disp = document.getElementById('mvp-sim-day-display');
+        const inp = document.getElementById('mvp-sim-day-input');
+        const cb = document.getElementById('mvp-partner-white-rabbit');
+        const v = typeof appState.simulatedDayIndex === 'number' ? appState.simulatedDayIndex : 0;
+        if (disp) disp.textContent = String(v);
+        if (inp) inp.value = String(v);
+        if (cb && appState.flags) cb.checked = !!appState.flags.partnerWhiteRabbitShanghai;
+    }
+    function initMvpSimDayPanel() {
+        const setBtn = document.getElementById('mvp-sim-day-set');
+        const inp = document.getElementById('mvp-sim-day-input');
+        const cb = document.getElementById('mvp-partner-white-rabbit');
+        if (setBtn && inp) {
+            setBtn.addEventListener('click', function () {
+                const n = parseInt(inp.value, 10);
+                appState.simulatedDayIndex = Number.isFinite(n) && n >= 0 ? n : 0;
+                saveState();
+                syncMvpSimDayPanel();
+            });
+        }
+        if (cb) {
+            cb.addEventListener('change', function () {
+                if (!appState.flags) appState.flags = { partnerWhiteRabbitShanghai: false };
+                appState.flags.partnerWhiteRabbitShanghai = !!cb.checked;
+                saveState();
+            });
+        }
+        syncMvpSimDayPanel();
+    }
+    initMvpSimDayPanel();
+
     function resolveObtainedLocation(item) {
         if (!item || typeof item !== 'object') return '';
         if (item.obtainedLocation && typeof item.obtainedLocation === 'string') return item.obtainedLocation;
@@ -6067,6 +6132,23 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         { image: '场景/场景_original/labubu.svg', label: 'labubu', tier: 'S', source: 'nfc', memoryTag: 'labubu', collectCategory: 'sculpture', regionLabel: '潮玩', intro: '尖耳朵、小獠牙，却越看越顺眼——潮玩把收藏欲变成可触摸的情绪陪伴。', facts: ['潮流 IP 形象', '常与盲盒、联名活动结合'], tags: ['潮玩', '盲盒', '收藏'] },
         { image: '场景/场景_original/四川—熊猫.png', label: '兔子', tier: 'S', source: 'nfc', memoryTag: 'rabbit', collectCategory: 'souvenir', regionLabel: '玩偶', intro: '柔软绒毛与长耳朵，是陪伴感最朴素的形状；适合被揣在怀里去旅行。', facts: ['常见于毛绒与文创周边', '与 Soulgo 旅行宠物气质相近'], tags: ['毛绒', '陪伴', 'NFC'] }
     ];
+
+    /** 上海大白兔合作：由 appState.flags.partnerWhiteRabbitShanghai 与 poolKey=上海 触发 */
+    const PARTNER_WHITE_RABBIT_SHANGHAI = {
+        image: '场景/场景_original/上海—大白兔.png',
+        label: '合作限定·大白兔',
+        tier: 'S',
+        source: 'partner',
+        memoryTag: 'white_rabbit_shanghai',
+        collectCategory: 'food',
+        regionLabel: '上海',
+        intro: '奶糖香里的城市甜意——合作款纪念贴，给旅途留一颗软软的回忆。',
+        facts: ['上海 × 大白兔 合作活动'],
+        tags: ['上海', '大白兔', '奶糖', '合作'],
+        collectibleSourceType: 'original_static',
+        assetSource: 'partner_campaign',
+        poolKey: '上海'
+    };
 
     const SCENE_LABEL_TO_COLLECT_CATEGORY = (() => {
         const map = new Map();
@@ -6845,6 +6927,332 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
         return scored[scored.length - 1].s;
     }
+
+    const DIARY_COLLECTIBLE_SCORE_API = '/api/diary-collectible-score';
+
+    function getObtainedSceneLabelSet() {
+        return new Set((appState.cabinetItems || []).map((i) => (i.scene && i.scene.label) || '').filter(Boolean));
+    }
+
+    function isPartnerWhiteRabbitModeOn() {
+        return !!(appState.flags && appState.flags.partnerWhiteRabbitShanghai);
+    }
+
+    function tryGetPartnerWhiteRabbitSceneForLocation(location) {
+        if (!isPartnerWhiteRabbitModeOn()) return null;
+        if (resolveCollectiblePoolKey(location) !== '上海') return null;
+        if (getObtainedSceneLabelSet().has(PARTNER_WHITE_RABBIT_SHANGHAI.label)) return null;
+        return {
+            ...PARTNER_WHITE_RABBIT_SHANGHAI,
+            resolvedSourceType: inferSceneSourceType(PARTNER_WHITE_RABBIT_SHANGHAI),
+            profileEvidence: ['partner:white_rabbit'],
+            intentTags: ['partner:大白兔', 'loc:上海']
+        };
+    }
+
+    function getBroadUnobtainedScenesForLocation(location) {
+        const poolKey = resolveCollectiblePoolKey(location);
+        if (!poolKey) return [];
+        const obtained = getObtainedSceneLabelSet();
+        const merged = mergeLocalPetHomeBPool(poolKey);
+        const pool = LOCATION_COLLECTIBLE_POOLS[poolKey] || defaultPool;
+        if (merged.length) {
+            return merged.filter((s) => s && s.label && !obtained.has(s.label));
+        }
+        const chinaNoLocal =
+            typeof isChinaLocation === 'function' &&
+            isChinaLocation(location) &&
+            merged.length === 0;
+        if (chinaNoLocal) return [];
+        return [...(pool.S || []), ...(pool.A || []), ...(pool.B || []), ...(pool.C || [])].filter(
+            (s) => s && s.label && !obtained.has(s.label)
+        );
+    }
+
+    function tokenizeSceneForCollect(s) {
+        if (!s) return [];
+        const raw = [s.label, s.regionLabel, s.intro, (s.tags || []).join(' ')].filter(Boolean).join(' ');
+        return raw
+            .toLowerCase()
+            .split(/[\s·,，。、；;]+/)
+            .map((t) => t.trim())
+            .filter((t) => t.length > 0);
+    }
+
+    function keywordListOverlapScore(keywords, tokenList) {
+        const keys = (keywords || []).map((k) => String(k).toLowerCase().trim()).filter(Boolean);
+        if (keys.length === 0) return 0.45;
+        const toks = Array.isArray(tokenList) ? tokenList : [];
+        let hit = 0;
+        for (const k of keys) {
+            let matched = false;
+            for (let t = 0; t < toks.length; t++) {
+                const x = toks[t];
+                if (!x) continue;
+                if (x === k || x.indexOf(k) >= 0 || k.indexOf(x) >= 0) {
+                    matched = true;
+                    break;
+                }
+            }
+            if (matched) hit += 1;
+        }
+        return hit / Math.max(keys.length, 1);
+    }
+
+    function soulCategoryNormalizedScore(scene) {
+        const wmap = getPersonalityCollectionWeights();
+        const cat = (scene && scene.collectCategory) || COLLECT_CATEGORY_FALLBACK_ID;
+        if (!wmap || typeof wmap !== 'object') return 0.5;
+        let maxV = 0.001;
+        Object.keys(wmap).forEach((k) => {
+            const v = wmap[k];
+            if (typeof v === 'number' && v > maxV) maxV = v;
+        });
+        const raw = typeof wmap[cat] === 'number' ? wmap[cat] : 1;
+        return Math.min(1, Math.max(0, raw / maxV));
+    }
+
+    function pickSceneByVisionWeightedScores(candidates, vision) {
+        if (!candidates || candidates.length === 0 || !vision) return { scene: null, score: 0 };
+        const objectKeywords = Array.isArray(vision.objectKeywords) ? vision.objectKeywords : [];
+        const emotionKeywords = Array.isArray(vision.emotionKeywords) ? vision.emotionKeywords : [];
+        const emoLabel = vision.emotionLabel ? [String(vision.emotionLabel)] : [];
+        let best = null;
+        let bestScore = -1;
+        for (let i = 0; i < candidates.length; i++) {
+            const s = candidates[i];
+            const toks = tokenizeSceneForCollect(s);
+            const soul = soulCategoryNormalizedScore(s);
+            const objS = keywordListOverlapScore(objectKeywords, toks);
+            const emoK = emoLabel.concat(emotionKeywords);
+            const emoS = Math.max(
+                keywordListOverlapScore(emoK, toks),
+                keywordListOverlapScore(emotionKeywords, toks)
+            );
+            const t = 0.4 * soul + 0.3 * objS + 0.3 * emoS;
+            if (t > bestScore) {
+                bestScore = t;
+                best = s;
+            }
+        }
+        return { scene: best, score: bestScore };
+    }
+
+    function getDiaryTextForCollectContext(diaryId) {
+        const eps = appState.memories && appState.memories.episodic ? appState.memories.episodic : [];
+        const m = eps.find((x) => String(x.diaryId) === String(diaryId));
+        const t = m ? m.narration || m.text || m.summary : '';
+        return String(t || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 420);
+    }
+
+    function diaryEntryHasUserUploadedImage(diaryId) {
+        const m = appState.diaryImageMeta && appState.diaryImageMeta[diaryId];
+        if (!m || typeof m !== 'object') return false;
+        return Object.keys(m).some((k) => m[k] === 'user');
+    }
+
+    function getFirstUserImageIndexForDiary(diaryId) {
+        const m = appState.diaryImageMeta && appState.diaryImageMeta[diaryId];
+        if (!m) return 0;
+        const keys = Object.keys(m);
+        for (let i = 0; i < keys.length; i++) {
+            if (m[keys[i]] === 'user') {
+                const n = parseInt(keys[i], 10);
+                return Number.isNaN(n) ? 0 : n;
+            }
+        }
+        return 0;
+    }
+
+    function grantDiaryCollectibleToCabinet(diaryId, location, scene, ragSource) {
+        if (!scene) return;
+        if (!appState.cabinetItems || appState.cabinetItems.length >= CABINET_SLOTS) {
+            if (typeof showPetMessage === 'function') {
+                showPetMessage('橱柜格子满了，先腾空一格再来收～', { duration: 4000 });
+            }
+            return;
+        }
+        const existed =
+            typeof findCabinetItem === 'function' ? findCabinetItem(scene, location) : null;
+        if (existed) {
+            if (typeof showPetMessage === 'function') {
+                showPetMessage('这件小物已经在橱柜里啦～', { duration: 3500 });
+            }
+            return;
+        }
+        addCabinetItem(location, scene, scene.tier, ragSource || undefined);
+        showRewardModal({
+            scene,
+            location,
+            tier: scene.tier || 'C',
+            ragSource: ragSource || undefined
+        });
+        if (!appState.diaryCollectibleClaim) appState.diaryCollectibleClaim = {};
+        appState.diaryCollectibleClaim[String(diaryId)] = true;
+        saveState();
+        if (typeof renderDiaryListFromState === 'function') {
+            void renderDiaryListFromState();
+        }
+    }
+
+    async function requestCollectibleFromDiary(diaryId) {
+        const id = String(diaryId);
+        if (appState.diaryCollectibleClaim && appState.diaryCollectibleClaim[id]) {
+            if (typeof showPetMessage === 'function') showPetMessage('这篇日记已经领过收集物啦～', { duration: 3500 });
+            return;
+        }
+        if (appState.cabinetItems && appState.cabinetItems.length >= CABINET_SLOTS) {
+            if (typeof showPetMessage === 'function') showPetMessage('橱柜已经满了，这次先记在心里～', { duration: 4000 });
+            return;
+        }
+        const location = typeof getDiaryLocationForDiaryImage === 'function' ? getDiaryLocationForDiaryImage(id) : '';
+        if (!location || !String(location).trim()) {
+            if (typeof showPetMessage === 'function') {
+                showPetMessage('这条日记没有地点记忆，先在地图书打一次卡生成日记再试～', { duration: 4500 });
+            }
+            return;
+        }
+        await ensureBadgeManifestLoaded();
+
+        const partnerScene = tryGetPartnerWhiteRabbitSceneForLocation(location);
+        if (partnerScene) {
+            grantDiaryCollectibleToCabinet(id, location, partnerScene, {
+                kind: 'partner_unlock',
+                displayName: '大白兔合作',
+                relatedLocation: '上海',
+                itemId: 'white_rabbit_shanghai'
+            });
+            return;
+        }
+
+        const diaryText = getDiaryTextForCollectContext(id);
+        const memoryTag = inferMemoryTagFromContext(location, null, diaryText);
+        const ragSource = { kind: 'diary_collect', itemId: '', displayName: '', relatedLocation: location };
+        const useVision = diaryEntryHasUserUploadedImage(id);
+
+        if (useVision) {
+            const imgIdx = getFirstUserImageIndexForDiary(id);
+            let src = (appState.diaryImages && appState.diaryImages[id] && appState.diaryImages[id][imgIdx]) ? appState.diaryImages[id][imgIdx] : '';
+            if (!src && typeof resolveDiaryImageSrcFromDom === 'function') {
+                src = resolveDiaryImageSrcFromDom(id, imgIdx);
+            }
+            if (isDiaryImageIdbRef(src) && typeof idbRefToDataUrl === 'function') {
+                try {
+                    src = await idbRefToDataUrl(src);
+                } catch (e) {
+                    src = '';
+                }
+            }
+            if (!src) {
+                if (typeof showPetMessage === 'function') showPetMessage('找不到你上传的图了，重插一张再收～', { duration: 4000 });
+                return;
+            }
+            const personality = appState.petPersonality || '小粟';
+            const pCfg = PERSONALITY_TYPES[personality] || {};
+            const payload = {
+                location,
+                diaryTextSnippet: getDiaryTextSnippetForComment(id),
+                petPersonality: personality,
+                ownerTitle: typeof getOwnerTitle === 'function' ? getOwnerTitle() : '伙伴',
+                personalityPromptDesc: pCfg.promptDesc || '',
+                semanticProfileSnapshot:
+                    typeof getSemanticProfileSnapshotForDiary === 'function' ? getSemanticProfileSnapshotForDiary() : null
+            };
+            if (typeof src === 'string' && src.startsWith('https://')) {
+                payload.imageHttpUrl = src;
+            } else if (typeof src === 'string' && src.startsWith('data:')) {
+                payload.imageDataUrl =
+                    typeof compressImageDataUrlForComment === 'function'
+                        ? await compressImageDataUrlForComment(src)
+                        : src;
+            } else {
+                try {
+                    const abs = new URL(src, window.location.href).href;
+                    if (abs.startsWith('https://')) {
+                        payload.imageHttpUrl = abs;
+                    } else {
+                        if (typeof showPetMessage === 'function') {
+                            showPetMessage('暂不支持从这张图解析，换一张本地上传图试试～', { duration: 4000 });
+                        }
+                        return;
+                    }
+                } catch (e) {
+                    if (typeof showPetMessage === 'function') showPetMessage('读图失败，稍后再试～', { duration: 3500 });
+                    return;
+                }
+            }
+            let vision = null;
+            try {
+                const res = await fetch(DIARY_COLLECTIBLE_SCORE_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data && data.ok) {
+                    vision = data;
+                } else {
+                    console.warn('[Diary collect] score API', data);
+                }
+            } catch (e) {
+                console.warn('[Diary collect] score API error', e);
+            }
+            const candidates = getBroadUnobtainedScenesForLocation(location);
+            let picked = null;
+            if (vision && candidates.length > 0) {
+                const { scene, score } = pickSceneByVisionWeightedScores(candidates, vision);
+                if (scene && score >= 0) picked = scene;
+            }
+            if (picked) {
+                const intent = buildCollectibleIntent(location, memoryTag, ragSource);
+                const sceneOut = {
+                    ...picked,
+                    resolvedSourceType: inferSceneSourceType(picked),
+                    intentTags: intent.intentTags,
+                    ragEvidence: (intent.ragEvidence || []).concat(['vision:object+emotion']),
+                    profileEvidence: (intent.profileEvidence || []).concat(['diary:weighted:0.4+0.3+0.3'])
+                };
+                grantDiaryCollectibleToCabinet(id, location, sceneOut, ragSource);
+                return;
+            }
+            if (candidates.length === 0) {
+                const forcedDyn = await tryGenerateDynamicCollectible(
+                    location,
+                    'B',
+                    buildCollectibleIntent(location, memoryTag, ragSource),
+                    { force: true }
+                );
+                if (forcedDyn) {
+                    grantDiaryCollectibleToCabinet(id, location, forcedDyn, ragSource);
+                } else if (typeof showPetMessage === 'function') {
+                    showPetMessage('没有可选的纪念贴，稍后再来或换座城市试试～', { duration: 4500 });
+                }
+                return;
+            }
+        }
+
+        const n = (appState.locations && appState.locations.length) || 0;
+        const seqIndex = (appState.collectibleLocations && appState.collectibleLocations.length) || 0;
+        const forcedTier = getForcedTierBySequence(seqIndex);
+        const intent0 = buildCollectibleIntent(location, memoryTag, ragSource);
+        let droppedScene = getDroppedScene(n, location, forcedTier, memoryTag, ragSource);
+        if (!droppedScene) {
+            const forced = await tryGenerateDynamicCollectible(location, forcedTier, intent0, { force: true });
+            if (forced) droppedScene = forced;
+        } else {
+            const dyn = await tryGenerateDynamicCollectible(location, forcedTier, intent0);
+            if (dyn) droppedScene = dyn;
+        }
+        if (droppedScene) {
+            grantDiaryCollectibleToCabinet(id, location, droppedScene, ragSource);
+        } else if (typeof showPetMessage === 'function') {
+            showPetMessage('这次没能挑到合眼缘的小物，改天再点我试试～', { duration: 4000 });
+        }
+    }
+
     function inferMemoryTagFromContext(location, keyFacts, diaryText) {
         const facts = Array.isArray(keyFacts) ? keyFacts.join(' ') : '';
         const loc = String(location || '');
@@ -9787,6 +10195,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             sendBleVibForCheckin(droppedScene, scene);
 
             const applyCheckinEffects = () => {
+                appState.simulatedDayIndex = (typeof appState.simulatedDayIndex === 'number' ? appState.simulatedDayIndex : 0) + 1;
+                if (typeof syncMvpSimDayPanel === 'function') syncMvpSimDayPanel();
+                saveState();
                 triggerAIPetAction(`刚才去了${location}`);
                 setPetState(PET_STATES.INTERACT);
                 if (petRoomBadge) petRoomBadge.classList.remove('hidden'); // 提示宠物房间有新动态
@@ -10261,15 +10672,55 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         });
     }
 
-    function buildSoulCommentWrapHTML(diaryId, imageIndex) {
+    function buildDiaryCollectibleOnlyBarHTML(diaryId) {
+        const id = escapeHtml(String(diaryId));
+        const idRaw = String(diaryId);
+        const claimed = !!(appState.diaryCollectibleClaim && appState.diaryCollectibleClaim[idRaw]);
+        const collectDisabled = claimed ? ' opacity-50 pointer-events-none' : '';
+        const collectLabel = claimed ? '已领取收集物' : '获取收集物';
+        return (
+            '<div class="w-full mt-1">' +
+                '<button type="button" class="diary-collectible-get inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#e8f5e9]/90 border border-[#66bb6a]/45 text-[10px] text-[#2e7d32] hover:border-[#43a047] transition-colors' +
+                collectDisabled +
+                '" data-diary-id="' +
+                id +
+                '" data-image-index="0">' +
+                '<i class="ph-fill ph-gift text-[10px]"></i><span>' +
+                collectLabel +
+                '</span></button>' +
+                '<p class="mt-0.5 text-[9px] text-[#6d4c41]/70 leading-tight">有用户图时会按图猜你喜欢；无图则按 Soul+地点挑一枚～</p></div>'
+        );
+    }
+
+    function buildSoulCommentWrapHTML(diaryId, imageIndex, opt) {
+        opt = opt || {};
         const id = escapeHtml(String(diaryId));
         const idx = escapeHtml(String(imageIndex));
         const boxClass = soulCommentBodyClass();
+        const idRaw = String(diaryId);
+        const showCollect = opt.includeCollectible === true;
+        const claimed = !!(appState.diaryCollectibleClaim && appState.diaryCollectibleClaim[idRaw]);
+        const collectDisabled = claimed ? ' opacity-50 pointer-events-none' : '';
+        const collectLabel = claimed ? '已领取收集物' : '获取收集物';
+        const collectRow = showCollect
+            ? '<button type="button" class="diary-collectible-get flex-shrink-0 inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-[#e8f5e9]/90 border border-[#66bb6a]/45 text-[10px] text-[#2e7d32] hover:border-[#43a047] transition-colors' +
+              collectDisabled +
+              '" data-diary-id="' +
+              id +
+              '" data-image-index="' +
+              idx +
+              '"><i class="ph-fill ph-gift text-[10px]"></i><span>' +
+              collectLabel +
+              '</span></button>' +
+              '<p class="mt-0.5 text-[9px] text-[#6d4c41]/70 leading-tight">有用户图时会按图猜你喜欢；无图则按 Soul+地点挑一枚～</p>'
+            : '';
         return (
             '<div class="diary-soul-comment-wrap mt-0 w-full max-w-full min-w-0 h-full flex flex-col min-h-0" data-diary-id="' + id + '" data-image-index="' + idx + '">' +
+            '<div class="flex flex-wrap gap-1.5 items-center">' +
             '<button type="button" class="diary-soul-comment flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fffaf0]/80 border border-[#8d6e63]/40 text-[10px] text-[#5d4037] hover:border-[#d84315] transition-colors" ' +
             'data-diary-id="' + id + '" data-image-index="' + idx + '">' +
-            '<i class="ph-fill ph-sparkle text-[10px]"></i><span>Soul 点评</span></button>' +
+            '<i class="ph-fill ph-sparkle text-[10px]"></i><span>Soul 点评</span></button></div>' +
+            collectRow +
             '<div class="' + boxClass + ' hidden" aria-live="polite"></div></div>'
         );
     }
@@ -10347,10 +10798,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 '<button type="button" class="js-export-diary-image absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-black/60 text-white text-[11px] hover:bg-black/80 transition-colors flex items-center gap-1" ' +
                 'data-diary-id="' + id + '" data-location="' + safeLoc + '" title="导出到本地">' +
                 '<i class="ph-fill ph-download-simple"></i><span>导出图片</span></button></div>' +
+                (opts.includeCollectible === false
+                    ? ''
+                    : buildDiaryCollectibleOnlyBarHTML(diaryId)) +
                 '</div>'
             );
         }
-        const soulBlock = buildSoulCommentWrapHTML(diaryId, 0);
+        const soulBlock = buildSoulCommentWrapHTML(diaryId, 0, { includeCollectible: opts.includeCollectible !== false });
         return (
             '<div class="flex flex-col gap-2 w-full">' +
             '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch w-full min-w-0">' +
@@ -10384,7 +10838,10 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         imgWrap.appendChild(img);
         const soulCol = document.createElement('div');
         soulCol.className = 'flex flex-col min-h-0 aspect-square w-full';
-        soulCol.insertAdjacentHTML('beforeend', buildSoulCommentWrapHTML(diaryId, imageIndex));
+        soulCol.insertAdjacentHTML(
+            'beforeend',
+            buildSoulCommentWrapHTML(diaryId, imageIndex, { includeCollectible: imageIndex === 0 })
+        );
         wrap.appendChild(imgWrap);
         wrap.appendChild(soulCol);
         return wrap;
@@ -10552,6 +11009,16 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     const diaryId = exportBtn.getAttribute('data-diary-id') || Date.now();
                     const filename = `soulgo-${loc}-${diaryId}.png`;
                     downloadImageToLocal(img.src, filename);
+                }
+                return;
+            }
+            const collectBtn = event.target.closest('.diary-collectible-get');
+            if (collectBtn) {
+                event.preventDefault();
+                if (collectBtn.classList.contains('pointer-events-none')) return;
+                const didC = collectBtn.getAttribute('data-diary-id');
+                if (didC != null) {
+                    void requestCollectibleFromDiary(didC);
                 }
                 return;
             }
