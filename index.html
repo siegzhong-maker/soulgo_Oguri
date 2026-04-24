@@ -7122,6 +7122,21 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
     }
 
+    const diaryAutoCollectPending = new Set();
+
+    async function tryAutoCollectForDiaryAfterComment(diaryId) {
+        const id = String(diaryId);
+        if (!id) return;
+        if (appState.diaryCollectibleClaim && appState.diaryCollectibleClaim[id]) return;
+        if (diaryAutoCollectPending.has(id)) return;
+        diaryAutoCollectPending.add(id);
+        try {
+            await requestCollectibleFromDiary(id);
+        } finally {
+            diaryAutoCollectPending.delete(id);
+        }
+    }
+
     async function requestCollectibleFromDiary(diaryId) {
         const id = String(diaryId);
         if (appState.diaryCollectibleClaim && appState.diaryCollectibleClaim[id]) {
@@ -10942,6 +10957,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
             if (data && data.comment && String(data.comment).trim()) {
                 updateSoulCommentAfterRequest(id, idx, 'text', String(data.comment).trim());
+                await tryAutoCollectForDiaryAfterComment(id);
             } else {
                 updateSoulCommentAfterRequest(id, idx, 'error', '没有收到点评，稍后再试～');
             }
@@ -11062,6 +11078,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                         syncAllSoulCommentBlocksForSlot(diaryId, slot);
                     }
                     saveState();
+                    void runSoulCommentForDiaryImage(diaryId, slot);
                 } catch (err) {
                     console.error('[Diary image] upload failed:', err);
                 }
@@ -11465,6 +11482,36 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         return fallbackScene !== undefined ? fallbackScene : null;
     }
 
+    function isDiaryCollectibleClaimed(diaryId) {
+        const id = String(diaryId || '');
+        return !!(appState.diaryCollectibleClaim && appState.diaryCollectibleClaim[id]);
+    }
+
+    function buildDiaryThumbSceneBlock(diaryId, thumbScene) {
+        const claimed = isDiaryCollectibleClaimed(diaryId);
+        const hasSceneImage = !!(thumbScene && thumbScene.image);
+        const sceneImageInner = (claimed && hasSceneImage)
+            ? `<div class="absolute inset-0 flex items-center justify-center p-2">
+                    <img
+                        ${idbImgAttrsFragmentFromSrc(thumbScene.image)}
+                        alt="${escapeHtml(thumbScene.label || '')}"
+                        class="w-10 h-10 rounded-lg object-contain bg-white/80 shadow-md border border-white"
+                    >
+               </div>`
+            : `<div class="absolute inset-0 flex flex-col items-center justify-center text-[#8f9b90]">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/75 border border-white shadow-sm">
+                        <i class="ph-fill ph-gift text-[15px]"></i>
+                    </span>
+                    <span class="mt-0.5 text-[9px] font-bold tracking-wide">待领取</span>
+               </div>`;
+        return `
+            <div class="relative w-16 h-16 mb-2 flex-shrink-0 rounded-xl border border-[#8d6e63] shadow-sm overflow-hidden bg-white">
+                <img src="assets/UI/UI界面1-3.png" alt="Location Map" class="absolute inset-0 w-full h-full object-cover">
+                ${sceneImageInner}
+            </div>
+        `;
+    }
+
     /**
      * 情景记忆里 reward 经 slim 后常无 scene.image（data URL 被丢弃）；橱柜/图鉴仍有图。
      * 按 label 补回展示用 image，使日记「已收集」与左侧缩略图与橱柜一致。
@@ -11543,18 +11590,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                </div>`
             : '';
 
-        const sceneImageBlock = scene ? `
-            <div class="relative w-16 h-16 mb-2 flex-shrink-0 rounded-xl border border-[#8d6e63] shadow-sm overflow-hidden bg-white">
-                <img src="assets/UI/UI界面1-3.png" alt="Location Map" class="absolute inset-0 w-full h-full object-cover">
-                <div class="absolute inset-0 flex items-center justify-center p-2">
-                    <img
-                        ${idbImgAttrsFragmentFromSrc(scene.image)}
-                        alt="${escapeHtml(scene.label || '')}"
-                        class="w-10 h-10 rounded-lg object-contain bg-white/80 shadow-md border border-white"
-                    >
-                </div>
-            </div>
-        ` : '';
+        const sceneImageBlock = buildDiaryThumbSceneBlock(diaryId, scene);
 
         const rewardBlock = (() => {
             if (reward && reward.kind === 'scene' && reward.scene && (reward.scene.image || reward.scene.label)) {
@@ -13450,21 +13486,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
             const thumbScene = resolveDiaryThumbScene(location, reward, thumbFallback);
 
-            const sceneImageBlock = `
-            <div class="relative w-16 h-16 mb-2 flex-shrink-0 rounded-xl border border-[#8d6e63] shadow-sm overflow-hidden bg-white">
-                <img src="assets/UI/UI界面1-3.png" alt="Location Map" class="absolute inset-0 w-full h-full object-cover">
-                ${
-                    thumbScene && thumbScene.image
-                        ? `<div class="absolute inset-0 flex items-center justify-center p-2">
-                               <img
-                                   ${idbImgAttrsFragmentFromSrc(thumbScene.image)}
-                                   alt="${escapeHtml(thumbScene.label || '')}"
-                                   class="w-10 h-10 rounded-lg object-contain bg-white/80 shadow-md border border-white"
-                               >
-                           </div>`
-                        : ''
-                }
-            </div>`;
+            const sceneImageBlock = buildDiaryThumbSceneBlock(diaryId, thumbScene);
 
             const images = (appState.diaryImages && appState.diaryImages[diaryId]) ? appState.diaryImages[diaryId] : [];
             const hasAigcHero = images.length > 0;
