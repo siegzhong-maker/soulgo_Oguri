@@ -185,6 +185,9 @@
             margin-bottom: 6px;
         }
         #reward-panel.ui-reward-panel .reward-switcher {
+            display: none;
+        }
+        #reward-panel.ui-reward-panel .reward-switcher:not(.hidden) {
             width: 100%;
             display: flex;
             align-items: center;
@@ -3401,6 +3404,21 @@
         return out;
     }
 
+    function normalizeDiaryRewardForDisplay(rawReward) {
+        if (!rawReward || typeof rawReward !== 'object') {
+            return { main: null, bonus: null };
+        }
+        const hasBundleShape = Object.prototype.hasOwnProperty.call(rawReward, 'main') || Object.prototype.hasOwnProperty.call(rawReward, 'bonus');
+        const mainRaw = hasBundleShape
+            ? (rawReward.main && typeof rawReward.main === 'object' ? rawReward.main : null)
+            : rawReward;
+        const bonusRaw = rawReward.bonus && typeof rawReward.bonus === 'object' ? rawReward.bonus : null;
+        return {
+            main: enrichDiaryRewardForDisplay(mainRaw),
+            bonus: enrichDiaryRewardForDisplay(bonusRaw)
+        };
+    }
+
     /** 加载存档时移除已失效的 blob: 图链（历史版本曾写入 episodic） */
     function migrateEpisodicStripBlobImageUrls() {
         const eps = appState.memories && appState.memories.episodic;
@@ -3415,6 +3433,18 @@
             }
             if (m.reward && typeof m.reward.image === 'string' && m.reward.image.startsWith('blob:')) {
                 delete m.reward.image;
+            }
+            if (
+                m.rewardBonus &&
+                m.rewardBonus.kind === 'scene' &&
+                m.rewardBonus.scene &&
+                typeof m.rewardBonus.scene.image === 'string' &&
+                m.rewardBonus.scene.image.startsWith('blob:')
+            ) {
+                delete m.rewardBonus.scene.image;
+            }
+            if (m.rewardBonus && typeof m.rewardBonus.image === 'string' && m.rewardBonus.image.startsWith('blob:')) {
+                delete m.rewardBonus.image;
             }
         });
     }
@@ -3452,6 +3482,15 @@
                 const b = JSON.stringify(m.reward);
                 if (a !== b) {
                     m.reward = slimR;
+                    changed = true;
+                }
+            }
+            if (m.rewardBonus) {
+                const slimRb = slimRewardForEpisodicStorage(m.rewardBonus);
+                const a = JSON.stringify(slimRb);
+                const b = JSON.stringify(m.rewardBonus);
+                if (a !== b) {
+                    m.rewardBonus = slimRb;
                     changed = true;
                 }
             }
@@ -7156,6 +7195,24 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
     }
 
+    function patchEpisodicBonusRewardForDiary(diaryId, rewardBonus) {
+        if (diaryId == null) return;
+        const eps = appState.memories && appState.memories.episodic;
+        if (!Array.isArray(eps)) return;
+        const id = String(diaryId);
+        for (let i = 0; i < eps.length; i++) {
+            const m = eps[i];
+            if (m && m.category === 'travel' && String(m.diaryId || '') === id) {
+                if (!rewardBonus || typeof rewardBonus !== 'object') {
+                    delete m.rewardBonus;
+                } else {
+                    m.rewardBonus = rewardBonus;
+                }
+                return;
+            }
+        }
+    }
+
     function grantDiaryCollectibleToCabinet(diaryId, location, scene, ragSource, options) {
         options = options || {};
         if (!scene) return { ok: false, reason: 'missing_scene' };
@@ -7416,7 +7473,10 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
         }
 
+        const poolKey = resolveCollectiblePoolKey(location);
+        const partnerOn = isPartnerWhiteRabbitModeOn();
         const partnerScene = tryGetPartnerWhiteRabbitSceneForLocation(location);
+        let partnerGranted = false;
         if (partnerScene) {
             const partnerOut = grantDiaryCollectibleToCabinet(
                 id,
@@ -7434,10 +7494,34 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     patchEpisodic: false
                 }
             );
-            if (partnerOut && partnerOut.ok) rewardList.push(partnerOut.reward);
+            if (partnerOut && partnerOut.ok) {
+                rewardList.push(partnerOut.reward);
+                partnerGranted = true;
+            }
         }
+        console.info('[Diary collect partner]', { diaryId: id, location, poolKey, partnerOn, partnerGranted });
 
         if (rewardList.length > 0) {
+            const mainReward = rewardList[0];
+            if (mainReward) {
+                patchEpisodicRewardForDiary(id, {
+                    kind: 'scene',
+                    scene: mainReward.scene,
+                    tier: mainReward.tier || 'C',
+                    location: mainReward.location || ''
+                });
+            }
+            const bonusReward = rewardList.length > 1 ? rewardList[1] : null;
+            if (bonusReward) {
+                patchEpisodicBonusRewardForDiary(id, {
+                    kind: 'scene',
+                    scene: bonusReward.scene,
+                    tier: bonusReward.tier || 'C',
+                    location: bonusReward.location || ''
+                });
+            } else {
+                patchEpisodicBonusRewardForDiary(id, null);
+            }
             markDiaryCollectibleClaimDone(id);
             showRewardModal(rewardList);
         } else if (typeof showPetMessage === 'function') {
@@ -11184,6 +11268,16 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 }
                 return;
             }
+            const bonusBtn = event.target.closest('.diary-reward-bonus-detail');
+            if (bonusBtn) {
+                event.preventDefault();
+                const sceneLabel = bonusBtn.getAttribute('data-scene-label') || '';
+                const opened = openCabinetItemDetailBySceneLabel(sceneLabel);
+                if (!opened && typeof showPetMessage === 'function') {
+                    showPetMessage('限定奖励已记录，稍后在见闻柜刷新查看～', { duration: 2800 });
+                }
+                return;
+            }
             const soulBtn = event.target.closest('.diary-soul-comment');
             if (soulBtn) {
                 event.preventDefault();
@@ -11733,6 +11827,51 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         return reward;
     }
 
+    function buildDiaryRewardMainHTML(reward) {
+        if (reward && reward.kind === 'scene' && reward.scene && (reward.scene.image || reward.scene.label)) {
+            return `
+            <div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
+                <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
+                ${reward.scene.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.scene.image)} alt="${escapeHtml(reward.scene.label || 'collectible')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
+                <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.scene.label || '远行场景')}</span>
+            </div>`;
+        }
+        if (reward && reward.kind === 'furniture' && (reward.image || reward.name)) {
+            return `
+            <div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
+                <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
+                ${reward.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.image)} alt="${escapeHtml(reward.name || '纪念品')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
+                <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-violet-100 text-violet-800 border border-violet-200"><i class="ph-fill ph-paint-brush text-[8px]"></i> 日常灵感</span>
+                <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.name || '灵感小物')}</span>
+            </div>`;
+        }
+        return '';
+    }
+
+    function buildDiaryRewardBonusChipHTML(diaryId, bonusReward) {
+        if (!bonusReward || !bonusReward.scene || !bonusReward.scene.label) return '';
+        const label = String(bonusReward.scene.label || '').trim();
+        if (!label) return '';
+        return `
+            <button type="button"
+                class="diary-reward-bonus-detail mt-1 inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#fff3f6] border border-[#ff8fab]/40 text-[10px] font-bold text-[#b85c6f] hover:bg-[#ffe8ef] transition-colors"
+                data-diary-id="${escapeHtml(String(diaryId || ''))}"
+                data-scene-label="${escapeHtml(label)}">
+                <i class="ph-fill ph-star-four text-[10px]"></i>
+                <span>额外限定：${escapeHtml(label)}</span>
+            </button>
+        `;
+    }
+
+    function openCabinetItemDetailBySceneLabel(label) {
+        const key = String(label || '').trim();
+        if (!key) return false;
+        const item = (appState.cabinetItems || []).find((it) => it && it.scene && it.scene.label === key);
+        if (!item) return false;
+        openCabinetItemDetail(item, false);
+        return true;
+    }
+
     // --- 辅助函数：生成日记 ---
     function generateDiaryEntry(location, content, sceneOverride, memoryCount, memorySources, reward) {
         const date = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
@@ -11777,26 +11916,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
         const sceneImageBlock = buildDiaryThumbSceneBlock(diaryId, scene);
 
-        const rewardBlock = (() => {
-            if (reward && reward.kind === 'scene' && reward.scene && (reward.scene.image || reward.scene.label)) {
-                return `
-            <div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
-                <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
-                ${reward.scene.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.scene.image)} alt="${escapeHtml(reward.scene.label || 'collectible')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
-                <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.scene.label || '远行场景')}</span>
-            </div>`;
-            }
-            if (reward && reward.kind === 'furniture' && (reward.image || reward.name)) {
-                return `
-            <div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
-                <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
-                ${reward.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.image)} alt="${escapeHtml(reward.name || '纪念品')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
-                <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-violet-100 text-violet-800 border border-violet-200"><i class="ph-fill ph-paint-brush text-[8px]"></i> 日常灵感</span>
-                <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.name || '灵感小物')}</span>
-            </div>`;
-            }
-            return '';
-        })();
+        const rewardDisplay = normalizeDiaryRewardForDisplay(reward);
+        const rewardBlock = buildDiaryRewardMainHTML(rewardDisplay.main);
+        const rewardBonusChip = buildDiaryRewardBonusChipHTML(diaryId, rewardDisplay.bonus);
 
         const diaryHTML = `
             <div class="rounded-2xl p-6 transform transition-all hover:scale-[1.01] shadow-md animate-[fadeIn_0.5s_ease-out] bg-[url('assets/UI/UI界面1-1.png')] bg-cover bg-center text-[#5d4037]" data-diary-id="${diaryId}" style="min-height: 140px;">
@@ -11813,6 +11935,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     <div class="flex-1 flex flex-col gap-2 min-w-0">
                         <p class="text-[#5d4037] text-sm leading-relaxed font-medium" style="text-shadow: 0 1px 0 rgba(255,255,255,0.5);">${text}</p>
                         ${rewardBlock}
+                        ${rewardBonusChip}
                     </div>
                 </div>
                 <div class="diary-media-section w-full mt-3 pt-3 border-t border-[#8d6e63]/15 flex flex-col gap-3">
@@ -13672,7 +13795,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             const location = m.location || m.location_city || '';
             const text = (m.narration || m.text || m.summary || '').trim() || '';
             const rewardRaw = (m.reward && typeof m.reward === 'object') ? m.reward : null;
-            const reward = enrichDiaryRewardForDisplay(rewardRaw);
+            const rewardBundleRaw =
+                m.rewardBonus && typeof m.rewardBonus === 'object'
+                    ? { main: rewardRaw || null, bonus: m.rewardBonus }
+                    : rewardRaw;
+            const rewardDisplay = normalizeDiaryRewardForDisplay(rewardBundleRaw);
+            const reward = rewardDisplay.main;
+            const rewardBonus = rewardDisplay.bonus;
             let thumbFallback = m.scene || (typeof getSceneAsset === 'function' ? getSceneAsset(location) : null);
             if (thumbFallback && (!thumbFallback.image || !String(thumbFallback.image).trim()) && m.scene_label) {
                 const rimg = resolveCollectibleImageByLabel(m.scene_label);
@@ -13707,22 +13836,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     </div>
                     <div class="flex-1 flex flex-col gap-2 min-w-0">
                         <p class="text-[#5d4037] text-sm leading-relaxed font-medium" style="text-shadow: 0 1px 0 rgba(255,255,255,0.5);">${escapeHtml(text)}</p>
-                        ${
-                            (reward && reward.kind === 'scene' && reward.scene && (reward.scene.image || reward.scene.label))
-                                ? `<div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
-                                        <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
-                                        ${reward.scene.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.scene.image)} alt="${escapeHtml(reward.scene.label || 'collectible')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
-                                        <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.scene.label || '远行场景')}</span>
-                                   </div>`
-                                : (reward && reward.kind === 'furniture' && (reward.image || reward.name))
-                                ? `<div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded-xl bg-[#fffaf0]/80 border border-[#8d6e63]/20">
-                                        <span class="text-[10px] font-extrabold text-[#8d6e63]">已收集</span>
-                                        ${reward.image ? `<img ${idbImgAttrsFragmentFromSrc(reward.image)} alt="${escapeHtml(reward.name || '纪念品')}" class="w-7 h-7 rounded-lg object-cover border border-white shadow-sm">` : ''}
-                                        <span class="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-violet-100 text-violet-800 border border-violet-200"><i class="ph-fill ph-paint-brush text-[8px]"></i> 日常灵感</span>
-                                        <span class="text-[11px] font-bold text-[#5d4037]">${escapeHtml(reward.name || '灵感小物')}</span>
-                                   </div>`
-                                : ''
-                        }
+                        ${buildDiaryRewardMainHTML(reward)}
+                        ${buildDiaryRewardBonusChipHTML(diaryId, rewardBonus)}
                     </div>
                 </div>
                 <div class="diary-media-section w-full mt-3 pt-3 border-t border-[#8d6e63]/15 flex flex-col gap-3">
