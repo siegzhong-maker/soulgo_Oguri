@@ -4352,12 +4352,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         btnBleConnect.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 
-    function sendBleVibForCheckin(droppedScene, sceneFallback) {
+    /** BLE 震动：仅在「旅行日记」内成功获得收集物并入柜时触发，tier 来自该枚收集物场景。打卡不震动。 */
+    function sendBleVibForCollectibleScene(scene) {
         if (!esp32Ble || !esp32Ble.getState().connected) return;
+        if (!scene || typeof scene !== 'object') return;
         const cfg = window.ESP32_BLE_CONFIG;
         const map = (cfg && cfg.TIER_TO_VIB) ? cfg.TIER_TO_VIB : { C: 1, B: 2, A: 2, S: 2 };
-        const raw = (droppedScene && droppedScene.tier) ? droppedScene.tier
-            : ((sceneFallback && sceneFallback.tier) ? sceneFallback.tier : 'C');
+        const raw = scene.tier;
         const tier = String(raw || 'C').toUpperCase();
         let mode = map[tier];
         if (mode == null) mode = tier === 'C' ? 1 : 2;
@@ -7068,6 +7069,20 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         return 0;
     }
 
+    function patchEpisodicRewardForDiary(diaryId, reward) {
+        if (diaryId == null || !reward || typeof reward !== 'object') return;
+        const eps = appState.memories && appState.memories.episodic;
+        if (!Array.isArray(eps)) return;
+        const id = String(diaryId);
+        for (let i = 0; i < eps.length; i++) {
+            const m = eps[i];
+            if (m && m.category === 'travel' && String(m.diaryId || '') === id) {
+                m.reward = reward;
+                return;
+            }
+        }
+    }
+
     function grantDiaryCollectibleToCabinet(diaryId, location, scene, ragSource) {
         if (!scene) return;
         if (!appState.cabinetItems || appState.cabinetItems.length >= CABINET_SLOTS) {
@@ -7085,12 +7100,20 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             return;
         }
         addCabinetItem(location, scene, scene.tier, ragSource || undefined);
+        sendBleVibForCollectibleScene(scene);
+        patchEpisodicRewardForDiary(diaryId, {
+            kind: 'scene',
+            scene,
+            tier: scene.tier || 'C',
+            location: location || ''
+        });
         showRewardModal({
             scene,
             location,
             tier: scene.tier || 'C',
             ragSource: ragSource || undefined
         });
+        if (actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
         if (!appState.diaryCollectibleClaim) appState.diaryCollectibleClaim = {};
         appState.diaryCollectibleClaim[String(diaryId)] = true;
         saveState();
@@ -9995,12 +10018,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 diaryText = buildDiaryText(location, appState.petPersonality);
             }
 
-            const n = appState.locations.length;
             const normalized = typeof normalizeLocationName === 'function' ? normalizeLocationName(location || '') : String(location || '').trim();
-            const collectibleLocs = appState.collectibleLocations || [];
-            const skipCollectible = collectibleLocs.includes(normalized); // 仅重复地点不掉落，新地点可继续掉落
 
-            // 基于后端 cabinetPlan 预先抽取一次「RAG 解锁物品 / 家具主题推荐」，用于后续收集物与文案解释
+            // 基于后端 cabinetPlan 预先抽取一次「RAG 解锁物品 / 家具主题推荐」，用于后续家具主题推荐（收集物改在旅行日记内领取，打卡不再掉落）
             let ragUnlockSource = null;
             if (cabinetPlanFromAI && Array.isArray(cabinetPlanFromAI.unlockItems) && cabinetPlanFromAI.unlockItems.length > 0) {
                 const u = cabinetPlanFromAI.unlockItems[0] || {};
@@ -10022,33 +10042,21 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
 
             const checkinDateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
-            setCheckinLoadingUi(true, '正在整理纪念物与旅行记忆…');
+            setCheckinLoadingUi(true, '正在整理旅行记忆…');
 
-            let droppedScene = null;
             let summaryFromLLM = null;
             let emotionFromLLM = null;
             let keyFactsFromLLM = null;
 
-            const [collectRes, memRes] = await Promise.all([
-                resolveCheckinDroppedSceneForParallel({
-                    skipCollectible,
-                    n,
-                    location,
-                    collectibleLocs,
-                    diaryText,
-                    ragUnlockSource
-                }).catch((err) => {
-                    console.warn('[Checkin] collectible branch error:', err);
-                    return { droppedScene: null };
-                }),
-                fetchCheckinMemorySummary(diaryText, location, checkinDateStr)
-            ]);
-            droppedScene = collectRes.droppedScene;
+            const memRes = await fetchCheckinMemorySummary(diaryText, location, checkinDateStr);
             summaryFromLLM = memRes.summaryFromLLM;
             emotionFromLLM = memRes.emotionFromLLM;
             keyFactsFromLLM = memRes.keyFactsFromLLM;
 
-            const scene = droppedScene || getSceneAsset(location);
+            // 收集物仅能在「旅行日记」里获取；打卡侧只用地点主题素材做展示与思考文案，不写入橱柜
+            const scene = getSceneAsset(location) || null;
+            const droppedScene = null;
+            const rewardForDiary = null;
 
             // 本次参考的旅行记忆条数与来源（用于成功提示与日记卡片展示）
             let memoryCountForHint = (result && result.ok && typeof result.memoryCount === 'number') ? result.memoryCount : 0;
@@ -10065,45 +10073,17 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 memorySources = relevant.slice(0, 2).map((m) => getMemorySourceLabel(m)).filter(Boolean);
             }
 
-            // 2. 生成日记（使用本次实际掉落的 scene，传入记忆来源用于可展开备注）
-            // 方案 A：同时把本次“掉落收集物（scene）”写进日记条目，日记与橱柜展示一致
-            const cabinetNotFullForReward = (!appState.cabinetItems || appState.cabinetItems.length < CABINET_SLOTS);
-            const rewardForDiary = (cabinetNotFullForReward && droppedScene)
-                ? { kind: 'scene', scene: droppedScene, tier: (droppedScene.tier || 'C'), location }
-                : null;
+            // 2. 生成日记（scene 为地点主题素材；「已收集」在日记内点「获取收集物」后写入 episodic.reward）
             diaryMeta = generateDiaryEntry(location, diaryText, scene, memoryCountForHint, memorySources, rewardForDiary);
 
             setCheckinLoadingUi(false);
 
-            // 2.0 先展示打卡预览（含日记+图片占位），以便 AIGC 生图能同时更新预览区；场景掉落时不再在此展示 itemBlock，改由 showRewardModal 弹窗
+            // 2.0 先展示打卡预览（日记+图片占位；收集物不在这里解锁）
             showCheckinPreview(location, {
-                scene: droppedScene ? null : (droppedScene || null),
+                scene: null,
                 diaryMeta: diaryMeta ? { diaryId: diaryMeta.diaryId, date: diaryMeta.date } : null,
                 diaryText
             });
-
-            // 2.0.1 立即处理本次收集物弹窗（避免被思考流程延迟导致“日记已显示已收集但弹窗没出现”的感知）
-            // 仅在橱柜未满且确实有掉落场景时触发；并用本次打卡内标记防止后续重复处理。
-            let rewardHandledThisCheckin = false;
-            let cabinetSkippedFull = false;
-            if (droppedScene) {
-                const cabinetNotFullNow = (!appState.cabinetItems || appState.cabinetItems.length < CABINET_SLOTS);
-                if (!cabinetNotFullNow) {
-                    cabinetSkippedFull = true;
-                } else {
-                    const existed = typeof findCabinetItem === 'function' ? findCabinetItem(droppedScene, location) : null;
-                    if (!existed) {
-                        addCabinetItem(location, droppedScene, undefined, ragUnlockSource || undefined);
-                        if (!collectibleLocs.includes(normalized)) {
-                            collectibleLocs.push(normalized);
-                            appState.collectibleLocations = collectibleLocs;
-                            saveState();
-                        }
-                        showRewardModal({ scene: droppedScene, location, tier: droppedScene.tier || 'C', ragSource: ragUnlockSource || undefined });
-                        rewardHandledThisCheckin = true;
-                    }
-                }
-            }
 
             // 2.1 触发 AIGC 生图 (异步)
             if (diaryMeta && diaryMeta.diaryId) {
@@ -10113,7 +10093,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 generateImageForDiary(diaryMeta.diaryId, location, appState.petPersonality, diaryText).catch(err => console.error('[AIGC Image] Error triggering image generation:', err));
             }
 
-            // 2.5 情景记忆：summary 已在上方与收集物并行请求；此处写入 episodic + RAG
+            // 2.5 情景记忆：此处写入 episodic + RAG（收集物 reward 在日记内领取后单独写入）
             if (diaryMeta && diaryMeta.diaryId) {
                 const memoryTag = inferMemoryTagFromContext(location, keyFactsFromLLM, diaryText);
 
@@ -10188,13 +10168,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     steps.push(`我一边回想以前的旅程，一边琢磨这次在 ${cityLabel} 最想记住的，是这里的味道还是一路上的小风景。`);
                 }
 
-                // 第 3 幕：行为与收集物决策
-                steps.push(`等回到小屋，我想先去小锅边发一会儿呆，看看要不要给 ${cityLabel} 做一个小摆件，让它悄悄待在橱柜里帮我们记住今天。`);
+                // 第 3 幕：行为与「日记里领收集物」提示
+                steps.push(`等回到小屋，去「旅行日记」里点一下「获取收集物」，让我按今天的 Soul 和地点帮你挑一枚小纪念贴进橱柜吧～`);
 
                 return steps;
             })();
-
-            sendBleVibForCheckin(droppedScene, scene);
 
             const applyCheckinEffects = () => {
                 appState.simulatedDayIndex = (typeof appState.simulatedDayIndex === 'number' ? appState.simulatedDayIndex : 0) + 1;
@@ -10205,27 +10183,12 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 if (petRoomBadge) petRoomBadge.classList.remove('hidden'); // 提示宠物房间有新动态
                 if (diaryBadge) diaryBadge.classList.remove('hidden');   // 提示宠物页有新日记
                 if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
-                const cabinetNotFull = (!appState.cabinetItems || appState.cabinetItems.length < CABINET_SLOTS);
-                if (cabinetNotFull && droppedScene && actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
-                // 兜底：如果前面没来得及处理（例如无预览/某些分支），这里再补一次；避免重复写入/重复弹窗
-                if (!rewardHandledThisCheckin && cabinetNotFull && droppedScene) {
-                    const existed = typeof findCabinetItem === 'function' ? findCabinetItem(droppedScene, location) : null;
-                    if (!existed) {
-                        addCabinetItem(location, droppedScene, undefined, ragUnlockSource || undefined);
-                        if (!collectibleLocs.includes(normalized)) {
-                            collectibleLocs.push(normalized);
-                            appState.collectibleLocations = collectibleLocs;
-                            saveState();
-                        }
-                    }
-                    showRewardModal({ scene: droppedScene, location, tier: droppedScene.tier || 'C', ragSource: ragUnlockSource || undefined });
-                    rewardHandledThisCheckin = true;
-                }
+                // 打卡不再入收集物，橱柜角标由日记内领取时更新
 
                 // 标记本次打卡用于返回宠物房时的聚焦反馈
                 appState.lastCheckinHighlight = {
                     location,
-                    hasNewScene: !!droppedScene,
+                    hasNewScene: false,
                     hasNewDiary: !!diaryMeta,
                     scene: scene || null
                 };
@@ -10252,11 +10215,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     checkinToast.textContent = '今天网络有点忙，我先用自己的小脑袋记下来，下次再帮你翻完整的旅行记忆～';
                 }
             } else if (checkinToast) {
-                if (cabinetSkippedFull) {
-                    checkinToast.textContent = '橱柜已经装满啦，这次旅行日记照常记下，腾出格子后再收新见闻～';
-                } else if (skipCollectible) {
-                    checkinToast.textContent = '这个地点的新见闻已经收过啦，这次照常帮你写日记和留脚印～';
-                }
+                // 打卡成功但无额外套餐文案（收集物在旅行日记里领取）
             }
 
             // 按钮视觉反馈

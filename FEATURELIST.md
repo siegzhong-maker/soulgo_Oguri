@@ -19,16 +19,16 @@
 
 ## 价值主张（可嵌入路演的 30 秒版）
 
-SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子宠物会**记住**你去过哪里、写过什么，下次生成内容时会**主动翻旧账**（检索相关记忆），并把「我在想什么」用**思考步骤 + 日记里的记忆提示**露给用户看——不是黑盒生成，而是**带解释的记忆增强互动**。可选的实体硬件（蓝牙挂件）在打卡成功时**震动反馈**，把线上叙事延伸到手里。
+SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子宠物会**记住**你去过哪里、写过什么，下次生成内容时会**主动翻旧账**（检索相关记忆），并把「我在想什么」用**思考步骤 + 日记里的记忆提示**露给用户看——不是黑盒生成，而是**带解释的记忆增强互动**。可选的实体硬件（蓝牙挂件）在**旅行日记中成功获得收集物并入柜**时**震动反馈**（按该枚纪念品的 **tier**），把「收到实物」同步到手里。
 
 ---
 
 ## 用户能感知到什么（按故事线，少提技术词）
 
 1. **地图上打卡**：输入地点 → 宠物写一篇旅行日记 → 地图上出现图钉、列表里留下足迹。  
-2. **回到小屋**：宠物按「计划」做小动作；若连接了蓝牙设备，打卡瞬间会有**震动**（稀有掉落与普通掉落震感不同）。  
+2. **回到小屋**：宠物按「计划」做小动作；若已连接蓝牙设备，在**旅行日记里成功领取收集物**时会有**震动**（随该纪念品的 **tier**，C 短震、B/A/S 长震）。  
 3. **看见记忆在工作**：思考过程里会提到**翻到了几条和这次旅行相关的记忆**；日记里也能展开「参考了哪些回忆」。  
-4. **收藏与房间**：打卡可能掉落纪念品进**橱柜**，可摆进房间；照片墙等会跟着丰富。  
+4. **收藏与房间**：在**旅行日记**里点「获取收集物」（或上传照片后）将纪念品收入**橱柜**；打卡本身不再自动掉落；可摆进房间；照片墙等会跟着丰富。  
 5. **人格不飘**：应用内有「核心档案」与可编辑的**人格卡片**；后台生成也会用同一份**角色圣经**（`soul.md`）约束口吻与设定，减少「每次像换了一个角色」的感觉。
 
 ---
@@ -46,7 +46,7 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 ## 建议 Demo 动线（约 3～5 分钟）
 
 1. **地图**：输入一个地点 → 打卡 → 看日记生成、思考步骤、是否提示「参考了 X 条记忆」。  
-2. **小屋**：点开日记 / 橱柜，展示掉落与收藏；若有 BLE 设备，提前在地图页连接，再打卡一次看震动差异。  
+2. **小屋**：点开**旅行日记**领取纪念品进橱柜、打开橱柜看收藏；若有 BLE 设备，提前在地图页连接，在日记里**成功领取一次收集物**时感受**按 tier 区分的**震动。  
 3. **宠物记忆**：打开「性格 / 核心档案」，展示世界观长文 + 人格卡片；说明「这是角色设定与生成一致性的来源」。  
 4. （可选，偏技术听众）记忆面板里向量池调试：展示「写入过多少条、最近写了什么」——用于证明 RAG 链路**真的在跑**，而非文案。
 
@@ -58,7 +58,7 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 | --- | --- |
 | 浏览器 | 固定 **Chrome 或 Edge**（桌面或安卓）；若演示 BLE，**不要用 Safari / iPhone**。 |
 | 网络 | 稳定 WiFi 或手机热点；避免会场公共 WiFi 半连接。 |
-| 部署 | 确认 `GET /soul.md`、`POST /api/diary` 可用；掉落依赖 `场景/generated/**` 与（国内兜底时）`/api/generate-collectible` 与密钥配置。 |
+| 部署 | 确认 `GET /soul.md`、`POST /api/diary` 可用；**旅行日记内领取**收集物依赖 `场景/generated/**` 与（国内兜底时）`/api/generate-collectible` 等配置。 |
 | 计时 | 完整走一遍上文「建议 Demo 动线」，控制在 **3～5 分钟**。 |
 | 第二次打卡 | 准备在同一城市或相邻流程**再打卡一次**，便于展示「翻到 X 条记忆」（避免冷启动叙事过薄）。 |
 | 兜底 | 备 **30～60 秒录屏**（含一次成功打卡 + 日记 + 橱柜），应对现场网络或 API 波动。 |
@@ -78,8 +78,8 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 | --- | --- | --- |
 | 未输入地点就点打卡 | 地图区提示先输入或选城市 | 「需要先选一个目的地」 |
 | API 失败或异常 | 日记用本地模板；toast 提示网络忙 | 「离线也能记一笔，联网后记忆会更厚」 |
-| 同一地点再次打卡 | 仍生成日记与图钉；**该地名首次已掉落后不再掉新见闻** | 「重复去同一座城市，日记照写，首访那份纪念品只领一次」 |
-| 橱柜格子已满（达到 `CABINET_SLOTS`） | 不再收纳新掉落；日记仍生成 | 「格子满了先整理橱柜，新见闻再装进来」 |
+| 同一地点再次打卡 | 仍生成日记与图钉；**每篇新日记在日记内单独领取**；若该地纪念品已入柜则提示已有 | 「重复去同一座城市，日记照写；那份纪念品在橱柜里的话不会重复收」 |
+| 橱柜格子已满（达到 `CABINET_SLOTS`） | 在日记点「获取收集物」时无法收纳；打卡与日记仍正常生成 | 「格子满了先整理橱柜，再来日记里收新见闻」 |
 | 打卡后自动进入宠物房 | 为播放「思考步骤」会切到小屋 | 「先看它怎么回忆这次旅行」 |
 
 ---
@@ -99,13 +99,13 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 
 ### MVP 对外统一口径（主路径 vs 增强）
 
-- **主路径（建议路演只强调这一条）**：地图**打卡**地点 → **AI 旅行日记**（失败时用本地模板兜底）→ **打卡掉落**纪念品进橱柜（同一标准化地名仅首次掉落新见闻，仍可重复打卡写日记与足迹）→ 宠物小屋展示**思考步骤**与日记中的**记忆提示**。  
+- **主路径（建议路演只强调这一条）**：地图**打卡**地点 → **AI 旅行日记**（失败时用本地模板兜底）→ 在**旅行日记**内点「获取收集物」或结合上传图领取纪念品进橱柜（Soul+地点 / 图+加权；合作款按规则 100%）→ 宠物小屋展示**思考步骤**与日记中的**记忆提示**。  
 - **增强 / 可选（点到为止，避免喧宾夺主）**：**日记插图**（本地上传、AIGC 配图）、**制作/家具 API**（`/api/generate-furniture`）、**BLE 震动**（需兼容浏览器）、**服务端 RAG 向量检索**（演示级内存池，冷启动与重启见下文答辩口径）。  
-- 与 PRD 中「橱柜本地上传生成配件」的关系：当前实现以**打卡掉落 + 日记侧上传**为主；上传制作为**增强能力**，对外话术与上文「主路径 vs 增强」保持一致，避免听众以为 MVP 只有上传一条链路。
+- 与 PRD 中「橱柜本地上传生成配件」的关系：收集物主路径在**日记内领取**；家具/制作 API 等为**增强能力**，对外话术与上文「主路径 vs 增强」保持一致。
 
-- **核心体验（对用户说）**：地图打卡一个地点 → 生成一篇旅行日记 → 掉落/制作纪念品（橱柜收藏 + 房间摆放）→ 宠物在房间里基于「记忆与计划」行动与互动。  
+- **核心体验（对用户说）**：地图打卡一个地点 → 生成一篇旅行日记 → 在日记里**领取**纪念品或制作类资产（橱柜收藏 + 房间摆放）→ 宠物在房间里基于「记忆与计划」行动与互动。  
 - **核心体验（对内）**：同上，背后串联日记 API、记忆抽取、可选向量写入与检索、以及 `soul.md` 角色钉扎。  
-- **可选硬件伴游**：浏览器通过 **Web Bluetooth** 连接 **ESP32-C3**（设备广播名与 [`bleConfig.js`](bleConfig.js) 中 `DEVICE_NAME` 一致，默认 `ESP32-C3-Tracker`）。打卡时在**掉落档位已定、思考文案已就绪**后立刻下发震动指令（普通款 **C** 短震，**B/A/S** 长震），**不等待**思考动画播完，避免体感滞后。
+- **可选硬件伴游**：浏览器通过 **Web Bluetooth** 连接 **ESP32-C3**（设备广播名与 [`bleConfig.js`](bleConfig.js) 中 `DEVICE_NAME` 一致，默认 `ESP32-C3-Tracker`）。在**旅行日记**内成功将收集物收入橱柜时，按**该枚收集物场景**的 **tier** 下发 `VIB`（**C** 短震，**B/A/S** 长震）；打卡本身**不**发震动。未连接时静默跳过，不影响主流程。
 - **数据形态（研发 / 答疑用；路演可跳过）**：
   - **前端状态（持久化）**：`localStorage` 保存 `appState`（打卡、日记、橱柜、记忆等）。
   - **日记插图（可选 IndexedDB）**：大图可存为 `idb:v1:` 引用以减轻 `localStorage` 配额压力（`soulgo_diary_images`），小图或仍可用 data URL 存在状态中。
@@ -119,7 +119,7 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 
 | 模块 | 用户入口/触发 | Feature | 产出/状态变化（前端） | 相关接口（后端） | RAG/记忆关联 |
 |---|---|---|---|---|---|
-| 地图 | 地点输入 + 打卡 | 打卡联动总流程（生成日记/掉落/写入记忆/更新 UI） | `locations` 增加；`mapPins` 增加；日记/橱柜/记忆可能更新 | `POST /api/diary`、`POST /api/memory-summary`、`POST /api/embed-and-store` | **记忆写入起点**：打卡→抽取摘要→写向量池 |
+| 地图 | 地点输入 + 打卡 | 打卡联动总流程（生成日记/写入记忆/更新 UI；**收集物在日记内领取**） | `locations` 增加；`mapPins` 增加；日记/记忆更新；橱柜在日记领物时更新 | `POST /api/diary`、`POST /api/memory-summary`、`POST /api/embed-and-store` | **记忆写入起点**：打卡→抽取摘要→写向量池 |
 | 地图 | 自动 | 地图图钉（随机位置） | `mapPins: {location,xRatio,yRatio}` | - | - |
 | 地图 | 自动 | 已打卡城市列表聚合 | 从 `memories.episodic` 聚合渲染（城市/日期/摘要） | - | 与 episodic 结构绑定（不是单纯 `locations`） |
 | 宠物小屋 | 顶部按钮「宠物记忆」 | 记忆总览/编辑（旅行 / 性格 / 习惯；**核心档案**为小粟纸感 UI） | 读写 `memories.episodic / semanticProfile / habit`；核心档案正文来自 `soul.md` 缓存 | `GET /api/debug-memories`（调试页内）；静态 **`GET /soul.md`** | **记忆可视化入口**（含 RAG 调试）；**结构化人格**优先 `semanticProfile`，否则 soul.md 内 JSON 或内嵌默认值 |
@@ -130,13 +130,14 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 | 日记 | 点击「插入图片」 | 本地插图上传（文件） | `diaryImages[diaryId]` 写入；`localStorage` 持久化 | - | - |
 | 日记 | 生成后异步 | AIGC 日记配图 + 导出图片 | `diaryImages[diaryId]` 写入；UI 同步更新 | `POST /api/generate-image` | - |
 | 日记 | 用户触发（插图相关） | 基于插图 + 人格快照的短评/互动文案 | 前端调用后更新日记相关展示 | **`POST /api/diary-image-comment`** | 使用 `getSoulShortBlurb` 钉扎角色，与 `semanticProfileSnapshot` 对齐 |
+| 日记 | 用户触发「获取收集物」 | Soul+地点或（有用户图）vision 加权后映射素材库；合作限定按规则 | `cabinetItems` 增加；`episodic.reward` 写入；日记卡片显示「已收集」 | `POST /api/diary-image-comment`（`diaryImageMode: collectibleScore`）、`/api/generate-collectible` 等 | 与打卡解耦 |
 | 记忆 | 打卡后自动 | **从日记抽取结构化记忆（summary/emotion/key_facts）** | 用于写入 `memories.episodic` 字段 | **`POST /api/memory-summary`** | **记忆结构化/可检索摘要**（为向量写入准备）；可选上下文：`nfc_source`、`checkin_frequency`、`interaction_frequency`；system 侧拼入 **soul.md 短摘要**（`getSoulShortBlurb`） |
 | 记忆 | 打卡后自动 | **写入情景记忆（episodic.travel）** | `memories.episodic.unshift(record)`；持久化 | - | **前端记忆池**（非向量）用于气泡/聚合/解释 |
 | 记忆 | 打卡后异步 | **向量化写入（RAG store）** | `appState.debug.ragLastError` 可能更新 | **`POST /api/embed-and-store`** | **RAG 写入**（embedding→内存向量库） |
 | RAG | 生成日记时自动 | **向量检索召回 topK** | 不直接落前端状态（仅影响生成结果） | **`POST /api/retrieve`** | **RAG 召回**（embedding query → cosine topK）；query 在服务端由地点、性格、爱好及 **`semanticProfileSnapshot` 偏好词**、习惯摘要等拼接 |
 | RAG | 记忆面板（调试） | 查看向量记忆池总数/最近 N 条/地点分布 | 仅展示，不持久化 | **`GET /api/debug-memories`** | **RAG 可观测性**（验证写入是否成功） |
 | 橱柜 | 热点「橱柜」 | 打开橱柜弹窗（格子数见 `CABINET_SLOTS`，当前为 100） | `cabinetItems` 渲染；打开后清未读 | - | - |
-| 橱柜 | 打卡掉落 | 纪念品掉落 → Reward Modal | `cabinetItems` 增加；`cabinetHasNewUnseen=true` | - | 掉落可能绑定 `memoryTag`/`ragUnlockSource` |
+| 橱柜 | 旅行日记内领取 | 纪念品 → Reward Modal | `cabinetItems` 增加；`cabinetHasNewUnseen=true` | 同日记收集物流 | 可能绑定 `memoryTag`、合作款等 |
 | 橱柜 | 打卡时解析 | cabinetPlan 解锁物品/家具主题建议 | `lastFurnitureSuggestion` 写入；用于解释来源 | `POST /api/diary`（返回 `cabinetPlan`） | **RAG 参与“收藏/主题建议”**（生成侧输出） |
 | 家具 | 制作流程 | 制作纪念品遮罩（进度/提示） | 仅 UI 过渡；之后可能可摆放 | `POST /api/generate-furniture` | - |
 | 房间 | Reward Modal 选择 | 立即摆放/放入橱柜 | `placedFurniture` / `cabinetItems` 更新 | - | - |
@@ -144,7 +145,7 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 | 宠物小屋 | 空闲/自主行为（若配置） | 大模型意图决策或回退本地性格决策 | 状态与思考步骤更新 | **`POST /api/pet/decide`**（`window.PET_DECIDE_API_URL`） | 使用 **soul.md 短摘要** 钉扎；失败时走本地 `decidePersonalityBehavior` |
 | 硬件 | 地图页 BLE 工具条 | 「连接设备」→ SoulGo 说明弹窗 →「搜索并连接」→ **系统蓝牙选择器**（必选） | GATT 连接 [`esp32BleClient.js`](esp32BleClient.js)；状态「已连接 · 设备名 / 未连接」 | - | - |
 | 硬件 | 地图页（已连接） | 「断开设备」直接断开 | `gatt.disconnect`；状态复位 | - | - |
-| 硬件 | 打卡成功且已连接 | 按掉落 **tier** 映射发送 `VIB:1`（短）或 `VIB:2`（长） | 在 `thinkingSteps` 计算完成后 **立即** 发送，不等待思考动画 | - | 配置见 [`bleConfig.js`](bleConfig.js) `TIER_TO_VIB` |
+| 硬件 | 日记内成功入柜且已连接 | 按**该枚收集物**的 **tier** 映射发送 `VIB:1`（短）或 `VIB:2`（长） | `grantDiaryCollectibleToCabinet` 在 `addCabinetItem` 后调用 `sendBleVibForCollectibleScene(scene)` | - | 配置见 [`bleConfig.js`](bleConfig.js) `TIER_TO_VIB`；打卡不震动 |
 | 硬件 | 宠物小屋顶部 | 硬件状态文案 +「去地图连接设备」 | 跳转地图并滚动到 BLE 工具条、聚焦连接按钮 | - | - |
 | 全局 | 横竖屏切换按钮 | 布局切换与自适应 | `soulgo_layout_mode` 保存；触发 resize | - | - |
 
@@ -157,7 +158,7 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
   - **断开设备**：不经过说明弹窗，直接断开 GATT。
   - **状态文案**：未连接 / 已连接 · 设备名；不支持时提示使用 Chrome/Edge（桌面或安卓）等。
 - **地点输入 + 打卡按钮**
-  - 输入城市/地点后触发“打卡联动”：生成日记、写入记忆、掉落收集物、更新地图图钉与列表。
+  - 输入城市/地点后触发“打卡联动”：生成日记、写入记忆、更新地图图钉与列表；**收集物在「旅行日记」里领取**。
 - **地图图钉（打卡可视化）**
   - 每次打卡会在地图上随机位置生成图钉（坐标以归一化比例存储，适配横竖屏）。
 - **已打卡城市列表**
@@ -201,7 +202,7 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
   - 新物品提示（获得后标记未读，用户打开橱柜后清除）
   - 橱柜记忆弹窗布局支持“分区 + 横向滑动卡片”（用于分层展示）
 - **获得新物品弹窗（Reward Modal）**
-  - 掉落或解锁后即时弹出：展示物品图、名称、徽章
+  - 在**旅行日记**内领取后（或产品定义的解锁后）即时弹出：展示物品图、名称、徽章
   - 两个操作：**放入橱柜** / **立即摆放**
 - **制作纪念品遮罩（Crafting Overlay）**
   - 展示“制作中”的过渡与进度条（用于家具制作流程）
@@ -216,16 +217,15 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 - **[`bleConfig.js`](bleConfig.js)**：导出 `window.ESP32_BLE_CONFIG`  
   - `DEVICE_NAME`：与固件广播/设备名一致（默认 `ESP32-C3-Tracker`）  
   - `SERVICE_UUID` / `CHAR_TX_UUID` / `CHAR_RX_UUID`：与固件 GATT 一致（参考 `esp_gps_blue` 侧服务实现）  
-  - `TIER_TO_VIB`：打卡掉落 **tier** → 震动档位（`1` 短震 / `2` 长震）；当前策略为 **仅 C 短震，B/A/S 长震**；未知 tier 时 **C→1，其余→2**
+  - `TIER_TO_VIB`：成功入柜的收集物**场景**的 **tier**（`sendBleVibForCollectibleScene`）→ 震动档位（`1` 短震 / `2` 长震）；当前策略为 **仅 C 短震，B/A/S 长震**；未知 tier 时 **C→1，其余→2**
 - **[`esp32BleClient.js`](esp32BleClient.js)**：`createEsp32BleClient()`  
   - `connect()`：`requestDevice`（按 `DEVICE_NAME` 过滤）→ `gatt.connect` → 订阅 TX 特征 **notify**（JSON 文本）  
   - `sendCommand(cmd)`：向 RX 特征 **write** 文本命令（如 `VIB:1`）  
   - `disconnect()`：断开并清理状态
 
-### 打卡联动（震动）
+### 收集物入柜与 BLE 震动
 
-- 在打卡流程中，当 **掉落场景 `droppedScene` 与 `thinkingSteps` 已就绪** 时调用 `sendBleVibForCheckin(droppedScene, scene)`：仅当 BLE **已连接** 时发送；tier 取自掉落场景或兜底场景，映射为 `VIB:<mode>`。
-- 与 **Reward Modal** 文案中的「小爪子都震了一下」等可形成体验上的一致叙事；硬件未连接时该发送静默跳过，不影响打卡主流程。
+- 在 `grantDiaryCollectibleToCabinet` 成功 `addCabinetItem` 后调用 `sendBleVibForCollectibleScene(scene)`：**tier 取自本枚入柜的收集物**；与 **Reward Modal** 同时机，仅当 BLE **已连接** 时发送 `VIB:<mode>`。打卡流程**不**发震动；硬件未连接时静默跳过。
 
 ### 运行环境与限制
 
@@ -258,7 +258,7 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 2. **抽取“可检索摘要”**：前端优先调用 `POST /api/memory-summary`，从日记与上下文抽取：
    - `summary`（30–50 字、一句话可检索）
    - `emotion`（excited/tender/curious/nostalgic/calm）
-   - `key_facts`（2–4 关键词，用于检索与掉落/主题判定）
+   - `key_facts`（2–4 关键词，用于检索与主题/橱柜建议判定）
    - 请求体除必填字段外，还可带 **`nfc_source`、同地点 `checkin_frequency`、近 7 天 `interaction_frequency`**、`last_summary` 等，供抽取时丰富 summary/key_facts（仍以日记正文为主）。
    - 失败时回退模板 `buildEpisodicSummary(...)`
 3. **写入前端情景记忆**：`appendEpisodicMemory(...)` 写入 `appState.memories.episodic`（带 strength/importance/recall 字段）。
@@ -304,14 +304,13 @@ SoulGo 把「去一个地方打卡」变成**可积累的陪伴体验**：电子
 
 ## 收集物 / 橱柜 / 家具（与记忆联动点）
 
-- **掉落与橱柜**
-  - 橱柜容量：12 格
-  - 新地点可触发掉落（含分 tier 的掉落逻辑与“新物品红点”）
-  - 掉落后弹出 Reward Modal，并写入橱柜数据
-- **RAG 参与“解锁来源”**
-  - `api/diary` 返回的 `cabinetPlan.unlockItems` / `furnitureSuggestions` 会在前端打卡流程中被提前抽取：
-    - 用作“本次掉落/解锁的解释来源”（`ragUnlockSource`）
-    - 用作“家具主题推荐”的持久化（`lastFurnitureSuggestion`）
+- **旅行日记内领取与橱柜**
+  - 橱柜容量见 `CABINET_SLOTS`（当前实现 100 格；空位与「新物品」红点等仍按产品逻辑显示）
+  - **收集物不在打卡时自动入柜**；用户在**旅行日记**中点「获取收集物」或走上传图分支，成功后将纪念品写入 `cabinetItems`、并回写对应该篇日记的 `episodic.reward` 以显示「已收集」；入柜时弹出 Reward Modal，若已连接 BLE 则**同时**按该枚 `tier` 震动
+- **RAG 参与“解释来源 / 建议”**（与打卡仍关联，与「是否入柜」解耦）
+  - `api/diary` 返回的 `cabinetPlan.unlockItems` / `furnitureSuggestions` 仍会在**打卡**流程中被抽取，用于 `ragUnlockSource`、家具推荐等，**不**再等同于打卡即掉落
+    - 用作 RAG/叙事解释来源（`ragUnlockSource`）
+    - 用作「家具主题推荐」的持久化（`lastFurnitureSuggestion`）
 - **家具制作（生成资产）**
   - `POST /api/generate-furniture`：根据地点/日记片段生成一张“单个家具资产”图（isometric 3D 风格）
   - 前端有“制作中遮罩”承接过程，并支持“立即摆放”
