@@ -158,6 +158,61 @@
         #reward-panel.ui-reward-panel--daily #reward-image {
             filter: drop-shadow(0 6px 10px rgba(120, 90, 60, 0.12));
         }
+        #reward-modal.reward-modal--halfsheet {
+            align-items: flex-end;
+            justify-content: center;
+        }
+        #reward-panel.ui-reward-panel.ui-reward-panel--halfsheet {
+            width: min(414px, 100vw);
+            min-height: min(50dvh, 420px);
+            max-height: min(50dvh, 420px);
+            border-radius: 22px 22px 0 0;
+            padding: 16px 16px 14px;
+            transform-origin: bottom center;
+            overflow: hidden;
+        }
+        #reward-panel.ui-reward-panel.ui-reward-panel--halfsheet .ui-reward-frame {
+            width: 138px;
+            height: 138px;
+            margin: 4px auto 8px;
+        }
+        #reward-panel.ui-reward-panel.ui-reward-panel--halfsheet #reward-title {
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+        #reward-panel.ui-reward-panel.ui-reward-panel--halfsheet #reward-name {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+        #reward-panel.ui-reward-panel .reward-switcher {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 2px 0 4px;
+        }
+        #reward-panel.ui-reward-panel .reward-switcher__tab {
+            border: 1px solid rgba(141, 110, 99, 0.28);
+            border-radius: 999px;
+            padding: 4px 9px;
+            background: rgba(255, 250, 240, 0.88);
+            font-size: 10px;
+            font-weight: 700;
+            color: #5d4037;
+            line-height: 1;
+        }
+        #reward-panel.ui-reward-panel .reward-switcher__tab.is-active {
+            border-color: rgba(216, 67, 21, 0.45);
+            background: rgba(255, 143, 171, 0.16);
+        }
+        #reward-panel.ui-reward-panel .reward-switcher__index {
+            min-width: 34px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(93, 64, 55, 0.75);
+        }
 
         .cabinet-section-prestige {
             border-radius: 16px;
@@ -2785,6 +2840,11 @@
                 <img id="reward-image" src="" alt="New Item">
             </div>
             <p id="reward-vibration-hint" class="text-sm text-gray-500 mb-2">小爪子都震了一下～</p>
+            <div id="reward-switcher" class="reward-switcher hidden" aria-label="reward-switcher">
+                <button id="reward-switch-tab-0" class="reward-switcher__tab" type="button">奖励1</button>
+                <span id="reward-switch-index" class="reward-switcher__index">1/1</span>
+                <button id="reward-switch-tab-1" class="reward-switcher__tab" type="button">奖励2</button>
+            </div>
             <div class="ui-reward-actions">
                 <button id="btn-reward-detail" class="ui-reward-btn ui-reward-btn--secondary" style="--btn-bg: url('assets/UI/UI界面2-2.png')">
                     <span>查看详情</span>
@@ -2876,6 +2936,8 @@
         simulatedDayIndex: 0,
         // 每篇日记仅一次「从配图区获取收集物」
         diaryCollectibleClaim: {},
+        // 规则序列推进计数：每次日记成功发放普通收集物 +1
+        collectibleGrantCount: 0,
         flags: {
             /** 上海打卡 / 上海日记收集物时 100% 出合作款（见 PARTNER_WHITE_RABBIT_SHANGHAI） */
             partnerWhiteRabbitShanghai: false
@@ -3714,6 +3776,9 @@
                     }
                     if (!appState.diaryCollectibleClaim || typeof appState.diaryCollectibleClaim !== 'object') {
                         appState.diaryCollectibleClaim = {};
+                    }
+                    if (typeof appState.collectibleGrantCount !== 'number' || appState.collectibleGrantCount < 0) {
+                        appState.collectibleGrantCount = Object.keys(appState.diaryCollectibleClaim || {}).length;
                     }
                     if (!appState.flags || typeof appState.flags !== 'object') {
                         appState.flags = { partnerWhiteRabbitShanghai: false };
@@ -7015,12 +7080,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     }
 
     function pickSceneByVisionWeightedScores(candidates, vision) {
-        if (!candidates || candidates.length === 0 || !vision) return { scene: null, score: 0 };
+        if (!candidates || candidates.length === 0 || !vision) return { scene: null, score: 0, breakdown: null };
         const objectKeywords = Array.isArray(vision.objectKeywords) ? vision.objectKeywords : [];
         const emotionKeywords = Array.isArray(vision.emotionKeywords) ? vision.emotionKeywords : [];
         const emoLabel = vision.emotionLabel ? [String(vision.emotionLabel)] : [];
         let best = null;
         let bestScore = -1;
+        let bestBreakdown = null;
         for (let i = 0; i < candidates.length; i++) {
             const s = candidates[i];
             const toks = tokenizeSceneForCollect(s);
@@ -7035,9 +7101,16 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             if (t > bestScore) {
                 bestScore = t;
                 best = s;
+                bestBreakdown = {
+                    soul,
+                    object: objS,
+                    emotion: emoS,
+                    total: t,
+                    label: s && s.label ? s.label : ''
+                };
             }
         }
-        return { scene: best, score: bestScore };
+        return { scene: best, score: bestScore, breakdown: bestBreakdown };
     }
 
     function getDiaryTextForCollectContext(diaryId) {
@@ -7083,13 +7156,14 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
     }
 
-    function grantDiaryCollectibleToCabinet(diaryId, location, scene, ragSource) {
-        if (!scene) return;
+    function grantDiaryCollectibleToCabinet(diaryId, location, scene, ragSource, options) {
+        options = options || {};
+        if (!scene) return { ok: false, reason: 'missing_scene' };
         if (!appState.cabinetItems || appState.cabinetItems.length >= CABINET_SLOTS) {
             if (typeof showPetMessage === 'function') {
                 showPetMessage('橱柜格子满了，先腾空一格再来收～', { duration: 4000 });
             }
-            return;
+            return { ok: false, reason: 'cabinet_full' };
         }
         const existed =
             typeof findCabinetItem === 'function' ? findCabinetItem(scene, location) : null;
@@ -7097,25 +7171,51 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             if (typeof showPetMessage === 'function') {
                 showPetMessage('这件小物已经在橱柜里啦～', { duration: 3500 });
             }
-            return;
+            return { ok: false, reason: 'duplicate' };
         }
         addCabinetItem(location, scene, scene.tier, ragSource || undefined);
         sendBleVibForCollectibleScene(scene);
-        patchEpisodicRewardForDiary(diaryId, {
-            kind: 'scene',
-            scene,
-            tier: scene.tier || 'C',
-            location: location || ''
-        });
-        showRewardModal({
+        if (options.patchEpisodic !== false) {
+            patchEpisodicRewardForDiary(diaryId, {
+                kind: 'scene',
+                scene,
+                tier: scene.tier || 'C',
+                location: location || ''
+            });
+        }
+        const rewardPayload = {
             scene,
             location,
             tier: scene.tier || 'C',
             ragSource: ragSource || undefined
-        });
+        };
+        if (!options.deferModal) {
+            showRewardModal(rewardPayload);
+        }
         if (actionCabinetBadge) actionCabinetBadge.classList.remove('hidden');
+        if (options.markClaim !== false) {
+            if (!appState.diaryCollectibleClaim) appState.diaryCollectibleClaim = {};
+            appState.diaryCollectibleClaim[String(diaryId)] = true;
+            saveState();
+            if (typeof renderDiaryListFromState === 'function') {
+                void renderDiaryListFromState();
+            }
+        }
+        return { ok: true, reward: rewardPayload };
+    }
+
+    function getCollectibleSequenceIndex() {
+        const claims = appState.diaryCollectibleClaim && typeof appState.diaryCollectibleClaim === 'object'
+            ? Object.keys(appState.diaryCollectibleClaim).length
+            : 0;
+        const granted = Number(appState.collectibleGrantCount || 0);
+        return Math.max(claims, granted, 0);
+    }
+
+    function markDiaryCollectibleClaimDone(diaryId) {
         if (!appState.diaryCollectibleClaim) appState.diaryCollectibleClaim = {};
         appState.diaryCollectibleClaim[String(diaryId)] = true;
+        appState.collectibleGrantCount = Number(appState.collectibleGrantCount || 0) + 1;
         saveState();
         if (typeof renderDiaryListFromState === 'function') {
             void renderDiaryListFromState();
@@ -7156,21 +7256,12 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
         await ensureBadgeManifestLoaded();
 
-        const partnerScene = tryGetPartnerWhiteRabbitSceneForLocation(location);
-        if (partnerScene) {
-            grantDiaryCollectibleToCabinet(id, location, partnerScene, {
-                kind: 'partner_unlock',
-                displayName: '大白兔合作',
-                relatedLocation: '上海',
-                itemId: 'white_rabbit_shanghai'
-            });
-            return;
-        }
-
         const diaryText = getDiaryTextForCollectContext(id);
         const memoryTag = inferMemoryTagFromContext(location, null, diaryText);
         const ragSource = { kind: 'diary_collect', itemId: '', displayName: '', relatedLocation: location };
         const useVision = diaryEntryHasUserUploadedImage(id);
+        const rewardList = [];
+        let normalGranted = false;
 
         if (useVision) {
             const imgIdx = getFirstUserImageIndexForDiary(id);
@@ -7243,8 +7334,22 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             const candidates = getBroadUnobtainedScenesForLocation(location);
             let picked = null;
             if (vision && candidates.length > 0) {
-                const { scene, score } = pickSceneByVisionWeightedScores(candidates, vision);
+                const { scene, score, breakdown } = pickSceneByVisionWeightedScores(candidates, vision);
                 if (scene && score >= 0) picked = scene;
+                if (breakdown) {
+                    console.info('[Diary collect weighted]', {
+                        diaryId: id,
+                        location,
+                        selected: breakdown.label,
+                        weights: { soul: 0.4, object: 0.3, emotion: 0.3 },
+                        score: {
+                            soul: Number(breakdown.soul.toFixed(3)),
+                            object: Number(breakdown.object.toFixed(3)),
+                            emotion: Number(breakdown.emotion.toFixed(3)),
+                            total: Number(breakdown.total.toFixed(3))
+                        }
+                    });
+                }
             }
             if (picked) {
                 const intent = buildCollectibleIntent(location, memoryTag, ragSource);
@@ -7255,10 +7360,16 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     ragEvidence: (intent.ragEvidence || []).concat(['vision:object+emotion']),
                     profileEvidence: (intent.profileEvidence || []).concat(['diary:weighted:0.4+0.3+0.3'])
                 };
-                grantDiaryCollectibleToCabinet(id, location, sceneOut, ragSource);
-                return;
+                const out = grantDiaryCollectibleToCabinet(id, location, sceneOut, ragSource, {
+                    deferModal: true,
+                    markClaim: false
+                });
+                if (out && out.ok) {
+                    rewardList.push(out.reward);
+                    normalGranted = true;
+                }
             }
-            if (candidates.length === 0) {
+            if (!normalGranted && candidates.length === 0) {
                 const forcedDyn = await tryGenerateDynamicCollectible(
                     location,
                     'B',
@@ -7266,28 +7377,69 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     { force: true }
                 );
                 if (forcedDyn) {
-                    grantDiaryCollectibleToCabinet(id, location, forcedDyn, ragSource);
+                    const out = grantDiaryCollectibleToCabinet(id, location, forcedDyn, ragSource, {
+                        deferModal: true,
+                        markClaim: false
+                    });
+                    if (out && out.ok) {
+                        rewardList.push(out.reward);
+                        normalGranted = true;
+                    }
                 } else if (typeof showPetMessage === 'function') {
                     showPetMessage('没有可选的纪念贴，稍后再来或换座城市试试～', { duration: 4500 });
                 }
-                return;
             }
         }
 
         const n = (appState.locations && appState.locations.length) || 0;
-        const seqIndex = (appState.collectibleLocations && appState.collectibleLocations.length) || 0;
-        const forcedTier = getForcedTierBySequence(seqIndex);
-        const intent0 = buildCollectibleIntent(location, memoryTag, ragSource);
-        let droppedScene = getDroppedScene(n, location, forcedTier, memoryTag, ragSource);
-        if (!droppedScene) {
-            const forced = await tryGenerateDynamicCollectible(location, forcedTier, intent0, { force: true });
-            if (forced) droppedScene = forced;
-        } else {
-            const dyn = await tryGenerateDynamicCollectible(location, forcedTier, intent0);
-            if (dyn) droppedScene = dyn;
+        if (!normalGranted) {
+            const seqIndex = getCollectibleSequenceIndex();
+            const forcedTier = getForcedTierBySequence(seqIndex);
+            const intent0 = buildCollectibleIntent(location, memoryTag, ragSource);
+            let droppedScene = getDroppedScene(n, location, forcedTier, memoryTag, ragSource);
+            if (!droppedScene) {
+                const forced = await tryGenerateDynamicCollectible(location, forcedTier, intent0, { force: true });
+                if (forced) droppedScene = forced;
+            } else {
+                const dyn = await tryGenerateDynamicCollectible(location, forcedTier, intent0);
+                if (dyn) droppedScene = dyn;
+            }
+            if (droppedScene) {
+                const out = grantDiaryCollectibleToCabinet(id, location, droppedScene, ragSource, {
+                    deferModal: true,
+                    markClaim: false
+                });
+                if (out && out.ok) {
+                    rewardList.push(out.reward);
+                    normalGranted = true;
+                }
+            }
         }
-        if (droppedScene) {
-            grantDiaryCollectibleToCabinet(id, location, droppedScene, ragSource);
+
+        const partnerScene = tryGetPartnerWhiteRabbitSceneForLocation(location);
+        if (partnerScene) {
+            const partnerOut = grantDiaryCollectibleToCabinet(
+                id,
+                location,
+                partnerScene,
+                {
+                    kind: 'partner_unlock',
+                    displayName: '大白兔合作',
+                    relatedLocation: '上海',
+                    itemId: 'white_rabbit_shanghai'
+                },
+                {
+                    deferModal: true,
+                    markClaim: false,
+                    patchEpisodic: false
+                }
+            );
+            if (partnerOut && partnerOut.ok) rewardList.push(partnerOut.reward);
+        }
+
+        if (rewardList.length > 0) {
+            markDiaryCollectibleClaimDone(id);
+            showRewardModal(rewardList);
         } else if (typeof showPetMessage === 'function') {
             showPetMessage('这次没能挑到合眼缘的小物，改天再点我试试～', { duration: 4000 });
         }
@@ -9942,7 +10094,10 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         let droppedScene = null;
         if (!skipCollectible) {
             await ensureBadgeManifestLoaded();
-            const seqIndex = collectibleLocs.length;
+            const seqIndex =
+                Array.isArray(collectibleLocs) && collectibleLocs.length > 0
+                    ? collectibleLocs.length
+                    : getCollectibleSequenceIndex();
             const forcedTier = getForcedTierBySequence(seqIndex);
             const recentEpisodic = (appState.memories && Array.isArray(appState.memories.episodic)) ? appState.memories.episodic[0] : null;
             const recentTag = recentEpisodic && recentEpisodic.memoryTag ? recentEpisodic.memoryTag : null;
@@ -13495,6 +13650,15 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const episodic = (appState.memories && appState.memories.episodic) ? appState.memories.episodic : [];
         const diaryEntries = episodic.filter((m) => m.category === 'travel' && m.diaryId).slice();
         diaryEntries.sort((a, b) => (parseInt(b.diaryId, 10) || 0) - (parseInt(a.diaryId, 10) || 0));
+        // 同一个 diaryId 可能在 episodic 里出现多条（例如后续补充/回写记忆），渲染时只保留一条，避免点评区重复。
+        const seenDiaryIds = new Set();
+        const uniqueDiaryEntries = [];
+        diaryEntries.forEach((entry) => {
+            const id = String(entry.diaryId || '');
+            if (!id || seenDiaryIds.has(id)) return;
+            seenDiaryIds.add(id);
+            uniqueDiaryEntries.push(entry);
+        });
 
         const personality = appState.petPersonality || '小粟';
         const personalityConfig = PERSONALITY_TYPES[personality] || null;
@@ -13502,7 +13666,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             || (personalityConfig && personalityConfig.icon)
             || '✨';
 
-        diaryEntries.forEach((m) => {
+        uniqueDiaryEntries.forEach((m) => {
             const diaryId = String(m.diaryId || '');
             const date = m.date || '';
             const location = m.location || m.location_city || '';
@@ -13600,7 +13764,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
         });
 
-        if (diaryEntries.length > 0) {
+        if (uniqueDiaryEntries.length > 0) {
             if (diaryBadge) diaryBadge.classList.remove('hidden');
             if (actionDiaryBadge) actionDiaryBadge.classList.remove('hidden');
         }
@@ -13939,9 +14103,37 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         return '这件纪念品';
     }
 
-    // 展示获得物品弹窗（支持家具 API 返回格式 或 场景收集物 { scene, location, tier }）
+    // 展示获得物品弹窗（支持单奖励或双奖励切换）
     let currentRewardItem = null;
-    function showRewardModal(item) {
+    let currentRewardItems = [];
+    let currentRewardIndex = 0;
+
+    function getRewardTabLabel(item, idx) {
+        if (!item) return `奖励${idx + 1}`;
+        if (item.ragSource && item.ragSource.kind === 'partner_unlock') return '合作限定';
+        return '普通奖励';
+    }
+
+    function setRewardSwitcherVisible(items, activeIndex) {
+        const switcher = document.getElementById('reward-switcher');
+        const tab0 = document.getElementById('reward-switch-tab-0');
+        const tab1 = document.getElementById('reward-switch-tab-1');
+        const indexEl = document.getElementById('reward-switch-index');
+        const count = Array.isArray(items) ? items.length : 0;
+        if (!switcher || !tab0 || !tab1 || !indexEl) return;
+        if (count <= 1) {
+            switcher.classList.add('hidden');
+            return;
+        }
+        switcher.classList.remove('hidden');
+        tab0.textContent = getRewardTabLabel(items[0], 0);
+        tab1.textContent = getRewardTabLabel(items[1], 1);
+        tab0.classList.toggle('is-active', activeIndex === 0);
+        tab1.classList.toggle('is-active', activeIndex === 1);
+        indexEl.textContent = `${activeIndex + 1}/${count}`;
+    }
+
+    function renderRewardModalItem(item) {
         const modal = document.getElementById('reward-modal');
         const panel = document.getElementById('reward-panel');
         const img = document.getElementById('reward-image');
@@ -13952,19 +14144,19 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
         if (panel) panel.classList.remove('ui-reward-panel--daily');
 
-            const isScene = item.scene && (item.scene.image || item.scene.label);
+        const isScene = item.scene && (item.scene.image || item.scene.label);
         if (isScene) {
-                const ragSource = item.ragSource && typeof item.ragSource === 'object' ? item.ragSource : null;
-                currentRewardItem = {
-                    location: item.location,
-                    scene: item.scene,
-                    tier: item.tier || 'C',
-                    source: ragSource || item.source || 'checkin',
-                    assetSource: item.assetSource || ASSET_SOURCE.TRAVEL_SCENE,
-                    scarcity: item.scarcity || ASSET_SCARCITY.UNLIMITED,
-                    obtainedAt: new Date().toISOString(),
-                    obtainedLocation: item.location || (item.scene && item.scene.regionLabel) || '旅行记忆'
-                };
+            const ragSource = item.ragSource && typeof item.ragSource === 'object' ? item.ragSource : null;
+            currentRewardItem = {
+                location: item.location,
+                scene: item.scene,
+                tier: item.tier || 'C',
+                source: ragSource || item.source || 'checkin',
+                assetSource: item.assetSource || ASSET_SOURCE.TRAVEL_SCENE,
+                scarcity: item.scarcity || ASSET_SCARCITY.UNLIMITED,
+                obtainedAt: new Date().toISOString(),
+                obtainedLocation: item.location || (item.scene && item.scene.regionLabel) || '旅行记忆'
+            };
             currentRewardItem._alreadyInCabinet = true;
             if (titleEl) titleEl.textContent = '✨ 解锁远行场景 ✨';
             bindImgSrcWithIdbHydrate(img, item.scene.image, modal);
@@ -13993,7 +14185,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 const debugHint = formatCollectDecisionHint();
                 if (debugHint) hintEl.textContent += debugHint;
             }
-            triggerVibration('item_obtained');
+            if (currentRewardIndex === 0) triggerVibration('item_obtained');
         } else {
             const assetSrc = (item && item.assetSource) ? String(item.assetSource) : ASSET_SOURCE.AI_DAILY;
             const scarcityVal = (item && item.scarcity) ? String(item.scarcity) : ASSET_SCARCITY.SOFT_CAPPED;
@@ -14023,8 +14215,22 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             if (hintEl) {
                 hintEl.textContent = '宠物根据这次回忆随手做的小装饰，随时还能再做新的～真正特别的款式来自你的生活与线下相遇。';
             }
-            triggerVibration('item_obtained_soft');
+            if (currentRewardIndex === 0) triggerVibration('item_obtained_soft');
         }
+        setRewardSwitcherVisible(currentRewardItems, currentRewardIndex);
+    }
+
+    function showRewardModal(itemOrItems) {
+        const modal = document.getElementById('reward-modal');
+        const panel = document.getElementById('reward-panel');
+        const list = Array.isArray(itemOrItems) ? itemOrItems.filter(Boolean) : [itemOrItems].filter(Boolean);
+        if (list.length === 0 || !modal || !panel) return;
+        currentRewardItems = list;
+        const partnerIndex = list.findIndex((x) => x && x.ragSource && x.ragSource.kind === 'partner_unlock');
+        currentRewardIndex = partnerIndex >= 0 ? partnerIndex : 0;
+        modal.classList.toggle('reward-modal--halfsheet', list.length > 1);
+        panel.classList.toggle('ui-reward-panel--halfsheet', list.length > 1);
+        renderRewardModalItem(list[currentRewardIndex]);
 
         modal.classList.remove('hidden');
         setTimeout(() => {
@@ -14057,16 +14263,36 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         closeRewardModal();
         openCabinetItemDetail(currentRewardItem, false);
     });
+    const rewardSwitchTab0 = document.getElementById('reward-switch-tab-0');
+    const rewardSwitchTab1 = document.getElementById('reward-switch-tab-1');
+    if (rewardSwitchTab0) {
+        rewardSwitchTab0.addEventListener('click', () => {
+            if (!Array.isArray(currentRewardItems) || currentRewardItems.length < 2) return;
+            currentRewardIndex = 0;
+            renderRewardModalItem(currentRewardItems[0]);
+        });
+    }
+    if (rewardSwitchTab1) {
+        rewardSwitchTab1.addEventListener('click', () => {
+            if (!Array.isArray(currentRewardItems) || currentRewardItems.length < 2) return;
+            currentRewardIndex = 1;
+            renderRewardModalItem(currentRewardItems[1]);
+        });
+    }
 
     function closeRewardModal() {
         const modal = document.getElementById('reward-modal');
         const panel = document.getElementById('reward-panel');
         if (panel) panel.classList.remove('ui-reward-panel--daily');
+        if (panel) panel.classList.remove('ui-reward-panel--halfsheet');
+        if (modal) modal.classList.remove('reward-modal--halfsheet');
         panel.classList.remove('scale-100', 'opacity-100');
         panel.classList.add('scale-95', 'opacity-0');
         setTimeout(() => {
             modal.classList.add('hidden');
             currentRewardItem = null;
+            currentRewardItems = [];
+            currentRewardIndex = 0;
         }, 300);
     }
 
