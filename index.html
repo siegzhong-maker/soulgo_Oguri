@@ -2415,7 +2415,7 @@
                         </div>
                         <label class="mt-1.5 flex items-start gap-2 cursor-pointer">
                             <input type="checkbox" id="mvp-partner-white-rabbit" class="mt-0.5 flex-shrink-0" />
-                            <span>上海 · 大白兔合作限定（命中上海时优先掉落合作款）</span>
+                            <span>上海 · 大白兔合作限定（开启后锁定上海打卡流程，输入与地图统一按上海）</span>
                         </label>
                     </div>
                     <!-- 打卡加载：卡片内横条，不占底部悬浮层，不挡「返回宠物小屋」 -->
@@ -6128,6 +6128,29 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
     }
 
+    const PARTNER_WHITE_RABBIT_LOCKED_LOCATION = '上海';
+    const DEFAULT_CHECKIN_PLACEHOLDER = '输入地点，如：武汉';
+    function isPartnerWhiteRabbitCheckinLocked() {
+        return !!(appState.flags && appState.flags.partnerWhiteRabbitShanghai);
+    }
+    function resolveCheckinLocationByMode(rawInput) {
+        if (isPartnerWhiteRabbitCheckinLocked()) return PARTNER_WHITE_RABBIT_LOCKED_LOCATION;
+        return String(rawInput || '').trim();
+    }
+    function syncPartnerModeCheckinUi() {
+        if (!locationInput) return;
+        const locked = isPartnerWhiteRabbitCheckinLocked();
+        if (locked) {
+            locationInput.value = PARTNER_WHITE_RABBIT_LOCKED_LOCATION;
+            locationInput.readOnly = true;
+            locationInput.setAttribute('aria-readonly', 'true');
+            locationInput.placeholder = '限定款模式已锁定上海';
+        } else {
+            locationInput.readOnly = false;
+            locationInput.removeAttribute('aria-readonly');
+            locationInput.placeholder = DEFAULT_CHECKIN_PLACEHOLDER;
+        }
+    }
     function syncMvpSimDayPanel() {
         const disp = document.getElementById('mvp-sim-day-display');
         const inp = document.getElementById('mvp-sim-day-input');
@@ -6136,6 +6159,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         if (disp) disp.textContent = String(v);
         if (inp) inp.value = String(v);
         if (cb && appState.flags) cb.checked = !!appState.flags.partnerWhiteRabbitShanghai;
+        syncPartnerModeCheckinUi();
     }
     function initMvpSimDayPanel() {
         const setBtn = document.getElementById('mvp-sim-day-set');
@@ -6154,6 +6178,12 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 if (!appState.flags) appState.flags = { partnerWhiteRabbitShanghai: false };
                 appState.flags.partnerWhiteRabbitShanghai = !!cb.checked;
                 saveState();
+                syncPartnerModeCheckinUi();
+                if (checkinToast) {
+                    checkinToast.textContent = cb.checked
+                        ? '限定款模式已开启：将按上海流程打卡'
+                        : '';
+                }
             });
         }
         syncMvpSimDayPanel();
@@ -10225,7 +10255,10 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         btnCheckin.addEventListener('click', async () => {
         if (isCheckinInProgress) return;
 
-        const location = locationInput.value.trim();
+        const location = resolveCheckinLocationByMode(locationInput.value);
+        if (locationInput && locationInput.value.trim() !== location) {
+            locationInput.value = location;
+        }
         if (!location) {
             if (checkinToast) checkinToast.textContent = '先输入或点地图选一个城市，再打卡～';
             return;
@@ -10473,7 +10506,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
 
             // 按钮视觉反馈
-            locationInput.value = '';
+            if (isPartnerWhiteRabbitCheckinLocked()) {
+                locationInput.value = PARTNER_WHITE_RABBIT_LOCKED_LOCATION;
+            } else {
+                locationInput.value = '';
+            }
             btnCheckin.innerText = memoryCountForHint > 0 ? `打卡成功！本次参考 ${memoryCountForHint} 条旅行记忆` : '打卡成功!';
             if (btnCheckin.classList.contains('bg-[#ff8fab]')) {
                 btnCheckin.classList.replace('bg-[#ff8fab]', 'bg-[#9bdeac]');
@@ -10730,7 +10767,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 if (!locationInput) return;
-                locationInput.value = name;
+                const targetLocation = resolveCheckinLocationByMode(name);
+                locationInput.value = targetLocation;
+                if (targetLocation !== name && checkinToast) {
+                    checkinToast.textContent = '限定款模式：地图打卡已锁定上海';
+                }
                 if (btnCheckin && !isCheckinInProgress) btnCheckin.click();
             });
             mapHotspotsEl.appendChild(btn);
