@@ -158,32 +158,6 @@
         #reward-panel.ui-reward-panel--daily #reward-image {
             filter: drop-shadow(0 6px 10px rgba(120, 90, 60, 0.12));
         }
-        #reward-modal.reward-modal--halfsheet {
-            align-items: flex-end;
-            justify-content: center;
-        }
-        #reward-panel.ui-reward-panel.ui-reward-panel--halfsheet {
-            width: min(414px, 100vw);
-            min-height: min(50dvh, 420px);
-            max-height: min(50dvh, 420px);
-            border-radius: 22px 22px 0 0;
-            padding: 16px 16px 14px;
-            transform-origin: bottom center;
-            overflow: hidden;
-        }
-        #reward-panel.ui-reward-panel.ui-reward-panel--halfsheet .ui-reward-frame {
-            width: 138px;
-            height: 138px;
-            margin: 4px auto 8px;
-        }
-        #reward-panel.ui-reward-panel.ui-reward-panel--halfsheet #reward-title {
-            font-size: 16px;
-            margin-bottom: 2px;
-        }
-        #reward-panel.ui-reward-panel.ui-reward-panel--halfsheet #reward-name {
-            font-size: 18px;
-            margin-bottom: 6px;
-        }
         #reward-panel.ui-reward-panel .reward-switcher {
             display: none;
         }
@@ -14384,8 +14358,6 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         currentRewardItems = list;
         const partnerIndex = list.findIndex((x) => x && x.ragSource && x.ragSource.kind === 'partner_unlock');
         currentRewardIndex = partnerIndex >= 0 ? partnerIndex : 0;
-        modal.classList.toggle('reward-modal--halfsheet', list.length > 1);
-        panel.classList.toggle('ui-reward-panel--halfsheet', list.length > 1);
         renderRewardModalItem(list[currentRewardIndex]);
 
         modal.classList.remove('hidden');
@@ -14440,8 +14412,6 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const modal = document.getElementById('reward-modal');
         const panel = document.getElementById('reward-panel');
         if (panel) panel.classList.remove('ui-reward-panel--daily');
-        if (panel) panel.classList.remove('ui-reward-panel--halfsheet');
-        if (modal) modal.classList.remove('reward-modal--halfsheet');
         panel.classList.remove('scale-100', 'opacity-100');
         panel.classList.add('scale-95', 'opacity-0');
         setTimeout(() => {
