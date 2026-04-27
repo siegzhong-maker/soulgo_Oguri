@@ -7075,6 +7075,19 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         };
     }
 
+    /** 大白兔合作限定在 grantDiaryCollectibleToCabinet 里使用的 RAG/来源元数据（与旧内联结构一致，集中一处） */
+    const PARTNER_RAG_SOURCE = {
+        kind: 'partner_unlock',
+        displayName: '大白兔合作',
+        relatedLocation: '上海',
+        itemId: 'white_rabbit_shanghai'
+    };
+
+    function resolvePartnerBonusScene(location) {
+        if (!isPartnerWhiteRabbitModeOn()) return null;
+        return tryGetPartnerWhiteRabbitSceneForLocation(location);
+    }
+
     function getBroadUnobtainedScenesForLocation(location) {
         const poolKey = resolveCollectiblePoolKey(location);
         if (!poolKey) return [];
@@ -7298,47 +7311,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         }
     }
 
-    const diaryAutoCollectPending = new Set();
-
-    async function tryAutoCollectForDiaryAfterComment(diaryId) {
-        const id = String(diaryId);
-        if (!id) return;
-        if (appState.diaryCollectibleClaim && appState.diaryCollectibleClaim[id]) return;
-        if (diaryAutoCollectPending.has(id)) return;
-        diaryAutoCollectPending.add(id);
-        try {
-            await requestCollectibleFromDiary(id);
-        } finally {
-            diaryAutoCollectPending.delete(id);
-        }
-    }
-
-    async function requestCollectibleFromDiary(diaryId) {
-        const id = String(diaryId);
-        if (appState.diaryCollectibleClaim && appState.diaryCollectibleClaim[id]) {
-            if (typeof showPetMessage === 'function') showPetMessage('这篇日记已经领过收集物啦～', { duration: 3500 });
-            return;
-        }
-        if (appState.cabinetItems && appState.cabinetItems.length >= CABINET_SLOTS) {
-            if (typeof showPetMessage === 'function') showPetMessage('橱柜已经满了，这次先记在心里～', { duration: 4000 });
-            return;
-        }
-        const location = typeof getDiaryLocationForDiaryImage === 'function' ? getDiaryLocationForDiaryImage(id) : '';
-        if (!location || !String(location).trim()) {
-            if (typeof showPetMessage === 'function') {
-                showPetMessage('这条日记没有地点记忆，先在地图书打一次卡生成日记再试～', { duration: 4500 });
-            }
-            return;
-        }
-        await ensureBadgeManifestLoaded();
-
-        const diaryText = getDiaryTextForCollectContext(id);
-        const memoryTag = inferMemoryTagFromContext(location, null, diaryText);
+    /**
+     * 为「旅行日记 / 获取收集物」主奖励解析**至多一个**场景；无副作用（不入柜、不弹窗、不写 episodic）。
+     * 返回: { type:'ok', scene, ragSource } | { type:'no_scene' } | { type:'abort' }（abort: 有用户图但无法走读图流程，不自动落静态池）
+     */
+    async function resolveMainCollectibleSceneForDiary(id, location, memoryTag) {
         const ragSource = { kind: 'diary_collect', itemId: '', displayName: '', relatedLocation: location };
         const useVision = diaryEntryHasUserUploadedImage(id);
-        const rewardList = [];
-        let normalGranted = false;
-
         if (useVision) {
             const imgIdx = getFirstUserImageIndexForDiary(id);
             let src = (appState.diaryImages && appState.diaryImages[id] && appState.diaryImages[id][imgIdx]) ? appState.diaryImages[id][imgIdx] : '';
@@ -7354,7 +7333,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
             if (!src) {
                 if (typeof showPetMessage === 'function') showPetMessage('找不到你上传的图了，重插一张再收～', { duration: 4000 });
-                return;
+                return { type: 'abort' };
             }
             const personality = appState.petPersonality || '小粟';
             const pCfg = PERSONALITY_TYPES[personality] || {};
@@ -7384,11 +7363,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                         if (typeof showPetMessage === 'function') {
                             showPetMessage('暂不支持从这张图解析，换一张本地上传图试试～', { duration: 4000 });
                         }
-                        return;
+                        return { type: 'abort' };
                     }
                 } catch (e) {
                     if (typeof showPetMessage === 'function') showPetMessage('读图失败，稍后再试～', { duration: 3500 });
-                    return;
+                    return { type: 'abort' };
                 }
             }
             let vision = null;
@@ -7429,23 +7408,19 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
             if (picked) {
                 const intent = buildCollectibleIntent(location, memoryTag, ragSource);
-                const sceneOut = {
-                    ...picked,
-                    resolvedSourceType: inferSceneSourceType(picked),
-                    intentTags: intent.intentTags,
-                    ragEvidence: (intent.ragEvidence || []).concat(['vision:object+emotion']),
-                    profileEvidence: (intent.profileEvidence || []).concat(['diary:weighted:0.4+0.3+0.3'])
+                return {
+                    type: 'ok',
+                    scene: {
+                        ...picked,
+                        resolvedSourceType: inferSceneSourceType(picked),
+                        intentTags: intent.intentTags,
+                        ragEvidence: (intent.ragEvidence || []).concat(['vision:object+emotion']),
+                        profileEvidence: (intent.profileEvidence || []).concat(['diary:weighted:0.4+0.3+0.3'])
+                    },
+                    ragSource
                 };
-                const out = grantDiaryCollectibleToCabinet(id, location, sceneOut, ragSource, {
-                    deferModal: true,
-                    markClaim: false
-                });
-                if (out && out.ok) {
-                    rewardList.push(out.reward);
-                    normalGranted = true;
-                }
             }
-            if (!normalGranted && candidates.length === 0) {
+            if (candidates.length === 0) {
                 const forcedDyn = await tryGenerateDynamicCollectible(
                     location,
                     'B',
@@ -7453,98 +7428,131 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     { force: true }
                 );
                 if (forcedDyn) {
-                    const out = grantDiaryCollectibleToCabinet(id, location, forcedDyn, ragSource, {
-                        deferModal: true,
-                        markClaim: false
-                    });
-                    if (out && out.ok) {
-                        rewardList.push(out.reward);
-                        normalGranted = true;
-                    }
-                } else if (typeof showPetMessage === 'function') {
+                    return { type: 'ok', scene: forcedDyn, ragSource };
+                }
+                if (typeof showPetMessage === 'function') {
                     showPetMessage('没有可选的纪念贴，稍后再来或换座城市试试～', { duration: 4500 });
                 }
             }
         }
 
         const n = (appState.locations && appState.locations.length) || 0;
-        if (!normalGranted) {
-            const seqIndex = getCollectibleSequenceIndex();
-            const forcedTier = getForcedTierBySequence(seqIndex);
-            const intent0 = buildCollectibleIntent(location, memoryTag, ragSource);
-            let droppedScene = getDroppedScene(n, location, forcedTier, memoryTag, ragSource);
-            if (!droppedScene) {
-                const forced = await tryGenerateDynamicCollectible(location, forcedTier, intent0, { force: true });
-                if (forced) droppedScene = forced;
-            } else {
-                const dyn = await tryGenerateDynamicCollectible(location, forcedTier, intent0);
-                if (dyn) droppedScene = dyn;
+        const seqIndex = getCollectibleSequenceIndex();
+        const forcedTier = getForcedTierBySequence(seqIndex);
+        const intent0 = buildCollectibleIntent(location, memoryTag, ragSource);
+        let droppedScene = getDroppedScene(n, location, forcedTier, memoryTag, ragSource);
+        if (!droppedScene) {
+            const forced = await tryGenerateDynamicCollectible(location, forcedTier, intent0, { force: true });
+            if (forced) droppedScene = forced;
+        } else {
+            const dyn = await tryGenerateDynamicCollectible(location, forcedTier, intent0);
+            if (dyn) droppedScene = dyn;
+        }
+        if (droppedScene) {
+            return { type: 'ok', scene: droppedScene, ragSource };
+        }
+        return { type: 'no_scene' };
+    }
+
+    const diaryAutoCollectPending = new Set();
+
+    async function tryAutoCollectForDiaryAfterComment(diaryId) {
+        const id = String(diaryId);
+        if (!id) return;
+        await requestCollectibleFromDiary(id);
+    }
+
+    async function requestCollectibleFromDiary(diaryId) {
+        const id = String(diaryId);
+        if (appState.diaryCollectibleClaim && appState.diaryCollectibleClaim[id]) {
+            if (typeof showPetMessage === 'function') showPetMessage('这篇日记已经领过收集物啦～', { duration: 3500 });
+            return;
+        }
+        if (appState.cabinetItems && appState.cabinetItems.length >= CABINET_SLOTS) {
+            if (typeof showPetMessage === 'function') showPetMessage('橱柜已经满了，这次先记在心里～', { duration: 4000 });
+            return;
+        }
+        const location = typeof getDiaryLocationForDiaryImage === 'function' ? getDiaryLocationForDiaryImage(id) : '';
+        if (!location || !String(location).trim()) {
+            if (typeof showPetMessage === 'function') {
+                showPetMessage('这条日记没有地点记忆，先在地图书打一次卡生成日记再试～', { duration: 4500 });
             }
-            if (droppedScene) {
-                const out = grantDiaryCollectibleToCabinet(id, location, droppedScene, ragSource, {
-                    deferModal: true,
-                    markClaim: false
-                });
-                if (out && out.ok) {
-                    rewardList.push(out.reward);
-                    normalGranted = true;
+            return;
+        }
+        if (diaryAutoCollectPending.has(id)) {
+            if (typeof showPetMessage === 'function') {
+                showPetMessage('正在为这篇日记挑小物，稍候再点～', { duration: 2500 });
+            }
+            return;
+        }
+        diaryAutoCollectPending.add(id);
+        try {
+            await ensureBadgeManifestLoaded();
+            const diaryText = getDiaryTextForCollectContext(id);
+            const memoryTag = inferMemoryTagFromContext(location, null, diaryText);
+            const mainResolve = await resolveMainCollectibleSceneForDiary(id, location, memoryTag);
+            if (mainResolve && mainResolve.type === 'abort') {
+                return;
+            }
+            if (!mainResolve || mainResolve.type !== 'ok' || !mainResolve.scene) {
+                if (typeof showPetMessage === 'function') {
+                    showPetMessage('这次没能挑到合眼缘的小物，改天再点我试试～', { duration: 4000 });
+                }
+                return;
+            }
+            const result = { main: null, bonus: null };
+            const outMain = grantDiaryCollectibleToCabinet(id, location, mainResolve.scene, mainResolve.ragSource, {
+                deferModal: true,
+                markClaim: false
+            });
+            if (outMain && outMain.ok) {
+                result.main = outMain.reward;
+            }
+            if (result.main) {
+                const partnerScene = resolvePartnerBonusScene(location);
+                if (partnerScene) {
+                    const outBonus = grantDiaryCollectibleToCabinet(
+                        id,
+                        location,
+                        partnerScene,
+                        PARTNER_RAG_SOURCE,
+                        { deferModal: true, markClaim: false, patchEpisodic: false }
+                    );
+                    if (outBonus && outBonus.ok) {
+                        result.bonus = outBonus.reward;
+                    }
                 }
             }
-        }
-
-        const poolKey = resolveCollectiblePoolKey(location);
-        const partnerOn = isPartnerWhiteRabbitModeOn();
-        const partnerScene = tryGetPartnerWhiteRabbitSceneForLocation(location);
-        let partnerGranted = false;
-        if (partnerScene) {
-            const partnerOut = grantDiaryCollectibleToCabinet(
-                id,
-                location,
-                partnerScene,
-                {
-                    kind: 'partner_unlock',
-                    displayName: '大白兔合作',
-                    relatedLocation: '上海',
-                    itemId: 'white_rabbit_shanghai'
-                },
-                {
-                    deferModal: true,
-                    markClaim: false,
-                    patchEpisodic: false
+            const poolKey = resolveCollectiblePoolKey(location);
+            const partnerOn = isPartnerWhiteRabbitModeOn();
+            const partnerGranted = !!result.bonus;
+            console.info('[Diary collect partner]', { diaryId: id, location, poolKey, partnerOn, partnerGranted });
+            if (result.main || result.bonus) {
+                if (result.main) {
+                    patchEpisodicRewardForDiary(id, {
+                        kind: 'scene',
+                        scene: result.main.scene,
+                        tier: result.main.tier || 'C',
+                        location: result.main.location || ''
+                    });
                 }
-            );
-            if (partnerOut && partnerOut.ok) {
-                rewardList.push(partnerOut.reward);
-                partnerGranted = true;
+                if (result.bonus) {
+                    patchEpisodicBonusRewardForDiary(id, {
+                        kind: 'scene',
+                        scene: result.bonus.scene,
+                        tier: result.bonus.tier || 'C',
+                        location: result.bonus.location || ''
+                    });
+                } else {
+                    patchEpisodicBonusRewardForDiary(id, null);
+                }
+                markDiaryCollectibleClaimDone(id);
+                showRewardModal([result.main, result.bonus].filter(Boolean));
+            } else if (typeof showPetMessage === 'function') {
+                showPetMessage('这次没能挑到合眼缘的小物，改天再点我试试～', { duration: 4000 });
             }
-        }
-        console.info('[Diary collect partner]', { diaryId: id, location, poolKey, partnerOn, partnerGranted });
-
-        if (rewardList.length > 0) {
-            const mainReward = rewardList[0];
-            if (mainReward) {
-                patchEpisodicRewardForDiary(id, {
-                    kind: 'scene',
-                    scene: mainReward.scene,
-                    tier: mainReward.tier || 'C',
-                    location: mainReward.location || ''
-                });
-            }
-            const bonusReward = rewardList.length > 1 ? rewardList[1] : null;
-            if (bonusReward) {
-                patchEpisodicBonusRewardForDiary(id, {
-                    kind: 'scene',
-                    scene: bonusReward.scene,
-                    tier: bonusReward.tier || 'C',
-                    location: bonusReward.location || ''
-                });
-            } else {
-                patchEpisodicBonusRewardForDiary(id, null);
-            }
-            markDiaryCollectibleClaimDone(id);
-            showRewardModal(rewardList);
-        } else if (typeof showPetMessage === 'function') {
-            showPetMessage('这次没能挑到合眼缘的小物，改天再点我试试～', { duration: 4000 });
+        } finally {
+            diaryAutoCollectPending.delete(id);
         }
     }
 
