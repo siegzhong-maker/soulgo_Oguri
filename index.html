@@ -158,6 +158,13 @@
         #reward-panel.ui-reward-panel--daily #reward-image {
             filter: drop-shadow(0 6px 10px rgba(120, 90, 60, 0.12));
         }
+        #reward-modal.reward-modal--anchored {
+            box-sizing: border-box;
+            padding-top: var(--reward-anchor-top, 0px);
+            padding-right: var(--reward-anchor-right, 0px);
+            padding-bottom: var(--reward-anchor-bottom, 0px);
+            padding-left: var(--reward-anchor-left, 0px);
+        }
         #reward-panel.ui-reward-panel .reward-switcher {
             display: none;
         }
@@ -14237,6 +14244,54 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     let currentRewardItem = null;
     let currentRewardItems = [];
     let currentRewardIndex = 0;
+    let rewardAnchorSyncBound = false;
+
+    function clearRewardModalAnchor(modal) {
+        if (!modal) return;
+        modal.classList.remove('reward-modal--anchored');
+        modal.style.removeProperty('--reward-anchor-top');
+        modal.style.removeProperty('--reward-anchor-right');
+        modal.style.removeProperty('--reward-anchor-bottom');
+        modal.style.removeProperty('--reward-anchor-left');
+    }
+
+    function applyRewardModalAnchor() {
+        const modal = document.getElementById('reward-modal');
+        const overlay = document.getElementById('modal-overlay');
+        const modalPanel = document.getElementById('modal-panel');
+        const appContainer = document.getElementById('app-container');
+        if (!modal) return;
+        const overlayVisible = !!(overlay && !overlay.classList.contains('hidden'));
+        if (!overlayVisible || !modalPanel || !appContainer) {
+            clearRewardModalAnchor(modal);
+            return;
+        }
+        const appRect = appContainer.getBoundingClientRect();
+        const targetRect = modalPanel.getBoundingClientRect();
+        const width = Math.max(1, appRect.width);
+        const height = Math.max(1, appRect.height);
+        const left = Math.max(0, Math.min(width, targetRect.left - appRect.left));
+        const top = Math.max(0, Math.min(height, targetRect.top - appRect.top));
+        const right = Math.max(0, Math.min(width, appRect.right - targetRect.right));
+        const bottom = Math.max(0, Math.min(height, appRect.bottom - targetRect.bottom));
+        modal.style.setProperty('--reward-anchor-top', top + 'px');
+        modal.style.setProperty('--reward-anchor-right', right + 'px');
+        modal.style.setProperty('--reward-anchor-bottom', bottom + 'px');
+        modal.style.setProperty('--reward-anchor-left', left + 'px');
+        modal.classList.add('reward-modal--anchored');
+    }
+
+    function ensureRewardAnchorSyncBound() {
+        if (rewardAnchorSyncBound) return;
+        rewardAnchorSyncBound = true;
+        const sync = () => {
+            const modal = document.getElementById('reward-modal');
+            if (!modal || modal.classList.contains('hidden')) return;
+            applyRewardModalAnchor();
+        };
+        window.addEventListener('resize', sync);
+        window.addEventListener('orientationchange', sync);
+    }
 
     function getRewardTabLabel(item, idx) {
         if (!item) return `奖励${idx + 1}`;
@@ -14355,6 +14410,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const panel = document.getElementById('reward-panel');
         const list = Array.isArray(itemOrItems) ? itemOrItems.filter(Boolean) : [itemOrItems].filter(Boolean);
         if (list.length === 0 || !modal || !panel) return;
+        ensureRewardAnchorSyncBound();
+        applyRewardModalAnchor();
         currentRewardItems = list;
         const partnerIndex = list.findIndex((x) => x && x.ragSource && x.ragSource.kind === 'partner_unlock');
         currentRewardIndex = partnerIndex >= 0 ? partnerIndex : 0;
@@ -14416,6 +14473,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         panel.classList.add('scale-95', 'opacity-0');
         setTimeout(() => {
             modal.classList.add('hidden');
+            clearRewardModalAnchor(modal);
             currentRewardItem = null;
             currentRewardItems = [];
             currentRewardIndex = 0;
