@@ -6123,13 +6123,21 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const locked = isPartnerWhiteRabbitCheckinLocked();
         if (locked) {
             locationInput.value = PARTNER_WHITE_RABBIT_LOCKED_LOCATION;
+            locationInput.disabled = true;
             locationInput.readOnly = true;
+            locationInput.setAttribute('aria-disabled', 'true');
             locationInput.setAttribute('aria-readonly', 'true');
             locationInput.placeholder = '限定款模式已锁定上海';
+            locationInput.classList.remove('bg-white', 'text-gray-700');
+            locationInput.classList.add('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
         } else {
+            locationInput.disabled = false;
             locationInput.readOnly = false;
+            locationInput.removeAttribute('aria-disabled');
             locationInput.removeAttribute('aria-readonly');
             locationInput.placeholder = DEFAULT_CHECKIN_PLACEHOLDER;
+            locationInput.classList.remove('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
+            locationInput.classList.add('bg-white', 'text-gray-700');
         }
     }
     function syncMvpSimDayPanel() {
