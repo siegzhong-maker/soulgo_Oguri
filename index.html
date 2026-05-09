@@ -6896,8 +6896,10 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         console.log('[SoulGo][collect_debug]', payload);
     }
     /**
+     * 动态生成纪念贴。
      * @param {object} [options]
-     * @param {boolean} [options.force] - 跳过概率，国内静态池为空时由打卡流程强制调用一次 API
+     * @param {boolean} [options.force] - 为 true 时跳过概率，静态池无法满足时必须使用（对齐流程图「静态池不满足→动态生成」）
+     *                 未传 force 时仍保留按档位的随机触发（仅备用）。
      */
     async function tryGenerateDynamicCollectible(location, tier, intent, options) {
         const force = options && options.force === true;
@@ -7440,13 +7442,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const seqIndex = getCollectibleSequenceIndex();
         const forcedTier = getForcedTierBySequence(seqIndex);
         const intent0 = buildCollectibleIntent(location, memoryTag, ragSource);
+        // 静态池策展贴纸一旦选出则不再用 AI 替换；仅当静态路径完全无法满足时才强制动态生成（对齐流程图）
         let droppedScene = getDroppedScene(n, location, forcedTier, memoryTag, ragSource);
         if (!droppedScene) {
             const forced = await tryGenerateDynamicCollectible(location, forcedTier, intent0, { force: true });
             if (forced) droppedScene = forced;
-        } else {
-            const dyn = await tryGenerateDynamicCollectible(location, forcedTier, intent0);
-            if (dyn) droppedScene = dyn;
         }
         if (droppedScene) {
             return { type: 'ok', scene: droppedScene, ragSource };
@@ -10168,6 +10168,13 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 interaction_frequency: interactionFreq
             };
             if (lastSummary) body.last_summary = lastSummary;
+            if (
+                typeof isPartnerWhiteRabbitModeOn === 'function' &&
+                isPartnerWhiteRabbitModeOn() &&
+                resolveCollectiblePoolKey(location) === '上海'
+            ) {
+                body.cooperative_checkin = '大白兔合作限定（上海打卡锁定）';
+            }
 
             const resp = await fetch('/api/memory-summary', {
                 method: 'POST',
@@ -10191,61 +10198,6 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             console.warn('[Memory Summary] 调用 /api/memory-summary 失败，使用模板回退。', err);
         }
         return { summaryFromLLM, emotionFromLLM, keyFactsFromLLM };
-    }
-
-    async function resolveCheckinDroppedSceneForParallel(ctx) {
-        const {
-            skipCollectible,
-            n,
-            location,
-            collectibleLocs,
-            diaryText,
-            ragUnlockSource
-        } = ctx;
-        let droppedScene = null;
-        if (!skipCollectible) {
-            await ensureBadgeManifestLoaded();
-            const seqIndex =
-                Array.isArray(collectibleLocs) && collectibleLocs.length > 0
-                    ? collectibleLocs.length
-                    : getCollectibleSequenceIndex();
-            const forcedTier = getForcedTierBySequence(seqIndex);
-            const recentEpisodic = (appState.memories && Array.isArray(appState.memories.episodic)) ? appState.memories.episodic[0] : null;
-            const recentTag = recentEpisodic && recentEpisodic.memoryTag ? recentEpisodic.memoryTag : null;
-            const currentTag = inferMemoryTagFromContext(location, null, diaryText);
-            const effectiveTag = currentTag || recentTag || null;
-            const collectibleIntent = buildCollectibleIntent(location, effectiveTag, ragUnlockSource);
-            droppedScene = getDroppedScene(n, location, forcedTier, effectiveTag, ragUnlockSource);
-            const dynamicScene = await tryGenerateDynamicCollectible(location, forcedTier, collectibleIntent);
-            if (dynamicScene) droppedScene = dynamicScene;
-            if (!droppedScene && typeof isChinaLocation === 'function' && isChinaLocation(location)) {
-                const forcedDyn = await tryGenerateDynamicCollectible(location, forcedTier, collectibleIntent, { force: true });
-                if (forcedDyn) {
-                    droppedScene = forcedDyn;
-                    if (typeof isCollectDebugEnabled === 'function' && isCollectDebugEnabled()) {
-                        const prev =
-                            window.__lastCollectibleDecision && typeof window.__lastCollectibleDecision === 'object'
-                                ? window.__lastCollectibleDecision
-                                : {};
-                        const mh =
-                            window.__soulgoCollectibleManifest && typeof window.__soulgoCollectibleManifest === 'object'
-                                ? window.__soulgoCollectibleManifest
-                                : {};
-                        reportCollectDecisionDebug({
-                            ...prev,
-                            dynamicForced: true,
-                            manifestPetHomeOk: mh.petHomeOk,
-                            selectedLabel: forcedDyn.label || '',
-                            selectedSourceType: 'aigc_cutout_manifest',
-                            selectedCategory: forcedDyn.collectCategory || ''
-                        });
-                    }
-                } else if (typeof isCollectDebugEnabled === 'function' && isCollectDebugEnabled() && typeof showPetMessage === 'function') {
-                    showPetMessage('静态池为空且动态生成未成功（请检查 /api/generate-collectible 与 OPENROUTER_API_KEY）。', { duration: 5500 });
-                }
-            }
-        }
-        return { droppedScene };
     }
 
     // --- 核心：打卡联动 ---
@@ -10380,6 +10332,12 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             // 2.5 情景记忆：此处写入 episodic + RAG（收集物 reward 在日记内领取后单独写入）
             if (diaryMeta && diaryMeta.diaryId) {
                 const memoryTag = inferMemoryTagFromContext(location, keyFactsFromLLM, diaryText);
+                const cooperativeNfc =
+                    typeof isPartnerWhiteRabbitModeOn === 'function' &&
+                    isPartnerWhiteRabbitModeOn() &&
+                    resolveCollectiblePoolKey(location) === '上海'
+                        ? '合作打卡·大白兔限定（上海）'
+                        : undefined;
 
                 appendEpisodicMemory({
                     date: diaryMeta.date,
@@ -10390,7 +10348,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                     emotion: emotionFromLLM || undefined,
                     key_facts: keyFactsFromLLM || undefined,
                     memoryTag: memoryTag || undefined,
-                    reward: rewardForDiary || undefined
+                    reward: rewardForDiary || undefined,
+                    nfc_source: cooperativeNfc
                 });
 
                 // RAG 写入：将本条情景记忆写入向量库（不阻塞打卡流程）
@@ -10402,7 +10361,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                         summary: embedSummary,
                         key_facts: Array.isArray(keyFactsFromLLM) ? keyFactsFromLLM : undefined,
                         location: location || undefined,
-                        date: diaryMeta.date || undefined
+                        date: diaryMeta.date || undefined,
+                        emotion: emotionFromLLM || undefined
                     })
                 }).then((r) => {
                     if (!r.ok) {

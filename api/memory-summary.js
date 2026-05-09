@@ -42,7 +42,18 @@ export async function POST(request) {
         );
     }
 
-    const { diaryText, location, date, time_slot, personality, last_summary, nfc_source, checkin_frequency, interaction_frequency } = payload || {};
+    const {
+        diaryText,
+        location,
+        date,
+        time_slot,
+        personality,
+        last_summary,
+        nfc_source,
+        checkin_frequency,
+        interaction_frequency,
+        cooperative_checkin
+    } = payload || {};
 
     if (!diaryText || !location || !date || !time_slot || !personality) {
         return new Response(
@@ -63,13 +74,21 @@ export async function POST(request) {
     if (nfc_source) {
         lines.push(`NFC 来源：${nfc_source}`);
     }
+    if (cooperative_checkin) {
+        lines.push(`合作打卡状态：${cooperative_checkin}`);
+    }
     if (typeof checkin_frequency === 'number') {
         lines.push(`该地点打卡频次：${checkin_frequency} 次`);
     }
     if (typeof interaction_frequency === 'number') {
         lines.push(`近 7 天互动频次：${interaction_frequency} 次`);
     }
-    if (nfc_source || typeof checkin_frequency === 'number' || typeof interaction_frequency === 'number') {
+    if (
+        nfc_source ||
+        cooperative_checkin ||
+        typeof checkin_frequency === 'number' ||
+        typeof interaction_frequency === 'number'
+    ) {
         lines.push('（以上为补充上下文，抽取时以日记为主，可参考融入 summary 或 key_facts）');
     }
     lines.push('请抽取一条记忆。');

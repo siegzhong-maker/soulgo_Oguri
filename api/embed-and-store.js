@@ -1,7 +1,7 @@
 /**
  * POST /api/embed-and-store
  * Minimal RAG (9.8): embed summary + key_facts with Gemini, store in memory.
- * Body: { summary, key_facts?, location?, date? }
+ * Body: { summary, key_facts?, location?, date?, emotion? }
  * Response: { ok: true, id } | { error }
  */
 import { embed } from 'ai';
@@ -33,7 +33,7 @@ export async function POST(request) {
     );
   }
 
-  const { summary, key_facts, location, date } = body || {};
+  const { summary, key_facts, location, date, emotion } = body || {};
   if (!summary || typeof summary !== 'string') {
     return Response.json(
       { error: 'missing_fields', message: 'summary (string) is required.' },
@@ -44,7 +44,12 @@ export async function POST(request) {
   const keyFactsText = Array.isArray(key_facts) && key_facts.length > 0
     ? `关键词：${key_facts.join('、')}`
     : '';
-  const content = keyFactsText ? `${summary}。${keyFactsText}` : summary;
+  const emotionText =
+    emotion && typeof emotion === 'string' && emotion.trim()
+      ? `情绪：${emotion.trim()}`
+      : '';
+  const parts = [summary, keyFactsText, emotionText].filter(Boolean);
+  const content = parts.join('。');
 
   try {
     const model = google.embedding(EMBED_MODEL);
@@ -57,6 +62,7 @@ export async function POST(request) {
     const metadata = {};
     if (location) metadata.location = location;
     if (date) metadata.date = date;
+    if (emotionText) metadata.emotion = emotion.trim();
 
     add({ id, content, embedding, metadata });
 

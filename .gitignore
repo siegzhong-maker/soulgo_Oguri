@@ -20,6 +20,9 @@ node_modules/
 # Vercel
 .vercel
 
+# Local tooling caches
+.cache/
+
 # Logs
 *.log
 npm-debug.log*
