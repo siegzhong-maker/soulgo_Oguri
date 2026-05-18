@@ -2408,12 +2408,6 @@
                 <h3 class="text-gray-700 font-bold mb-3 flex items-center gap-2 text-sm">
                     <i class="ph-fill ph-map-pin text-[#ff8fab]"></i> 记录新旅程
                 </h3>
-                <div id="game-progress-hud-map" class="game-progress-hud mb-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] font-bold text-[#5c4a3a]/92 px-2 py-1 rounded-xl bg-[#fffaf7]/95 border border-[#eaddcf]/80">
-                    <span class="inline-flex items-center gap-0.5 whitespace-nowrap"><i class="ph-fill ph-suitcase-simple text-[10px]" aria-hidden="true"></i>见闻 <strong class="font-extrabold js-hud-cabinet-num">0</strong>/<span class="js-hud-cabinet-cap">100</span></span>
-                    <span class="text-[#bcaaa4]" aria-hidden="true">·</span>
-                    <span class="inline-flex items-center gap-0.5 whitespace-nowrap"><i class="ph-fill ph-squares-four text-[10px]" aria-hidden="true"></i>图鉴 <strong class="font-extrabold js-hud-matrix-num">0</strong>/<span class="js-hud-matrix-cap">0</span></span>
-                    <span class="js-hud-hint hidden basis-full text-center font-medium text-[9px] text-[#795548]/88 leading-tight"></span>
-                </div>
                 <div class="flex gap-2 min-w-0">
                     <input type="text" id="location-input" placeholder="输入地点，如：武汉" class="flex-1 min-w-0 bg-white border-2 border-transparent focus:border-[#ff8fab] rounded-2xl px-4 py-3 outline-none shadow-sm text-gray-700 transition-all">
                     <button id="btn-checkin" class="flex-shrink-0 bg-[#ff8fab] hover:bg-[#ff7b9c] text-white font-bold rounded-2xl px-4 py-3 transition-colors shadow-md whitespace-nowrap text-sm">
@@ -2490,13 +2484,6 @@
                         <i class="ph-fill ph-book-open text-sm"></i>
                     </button>
                 </header>
-                <!-- 轻量进度 HUD：见闻格 + 图鉴矩阵格 -->
-                <div id="game-progress-hud-pet" class="game-progress-hud mt-0.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] font-bold text-[#5c4a3a]/92 max-w-[min(100%,360px)] px-2 py-0.5 rounded-full bg-white/55 border border-[#e8dfd0]/85">
-                    <span class="inline-flex items-center gap-0.5 whitespace-nowrap"><i class="ph-fill ph-suitcase-simple text-[10px]" aria-hidden="true"></i>见闻 <strong class="font-extrabold js-hud-cabinet-num">0</strong>/<span class="js-hud-cabinet-cap">100</span></span>
-                    <span class="text-[#bcaaa4]" aria-hidden="true">·</span>
-                    <span class="inline-flex items-center gap-0.5 whitespace-nowrap"><i class="ph-fill ph-squares-four text-[10px]" aria-hidden="true"></i>图鉴 <strong class="font-extrabold js-hud-matrix-num">0</strong>/<span class="js-hud-matrix-cap">0</span></span>
-                    <span class="js-hud-hint hidden basis-full text-center font-medium text-[9px] text-[#795548]/88 leading-tight pt-0.5"></span>
-                </div>
                 <!-- 状态与心情合并为一行，更紧凑 -->
                 <div class="mt-0.5 w-full flex flex-row flex-wrap items-center justify-between gap-2 min-w-0">
                     <div id="pet-status-bar" class="text-xs font-bold text-gray-600 truncate min-w-0 flex-1">
@@ -3740,11 +3727,6 @@
         if (soulgoSuppressPersistence) return;
         try {
             localStorage.setItem(APP_STATE_KEY, JSON.stringify(appState));
-            try {
-                if (typeof refreshGameProgressHud === 'function') refreshGameProgressHud();
-            } catch (hudErr) {
-                /* noop */
-            }
         } catch (e) {
             if (e && e.name === 'QuotaExceededError') {
                 console.warn('[saveState] QuotaExceededError, gradual diary trim…');
@@ -12351,59 +12333,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
     // --- 辅助函数：在橱柜中新增纪念品 ---
     const CABINET_SLOTS = 100;
-        const cabinetPlaceholderHTML = `<div class="cabinet-slot cabinet-slot--empty" data-placeholder="cabinet-empty"><div class="cabinet-slot__media"><img src="assets/cabinet-empty.svg" alt="橱柜" class="cabinet-empty-icon" width="40" height="40"></div><span class="text-[10px]">去旅行解锁</span></div>`;
-
-    /** 轻量 HUD：见闻格占用 + 图鉴矩阵格子点亮数（不按筛选，只看总盘） */
-    function refreshGameProgressHud() {
-        try {
-            const items = appState.cabinetItems || [];
-            const cabinetCur = Math.min(items.length, CABINET_SLOTS);
-            const cats = visibleCollectMatrixCategories();
-            const matrixCap = Math.max(1, cats.length * 4);
-            const filt = normalizeCabinetMatrixFilters(MATRIX_DEFAULT_FILTERS);
-            const buckets = buildCollectMatrixBuckets(items, filt);
-            let matrixLit = 0;
-            cats.forEach((c) => {
-                ['S', 'A', 'B', 'C'].forEach((tier) => {
-                    const bucket = buckets[c.id];
-                    const cellList = bucket && bucket[tier] ? bucket[tier] : [];
-                    if (cellList.length > 0) matrixLit += 1;
-                });
-            });
-
-            document.querySelectorAll('.game-progress-hud').forEach((root) => {
-                root.querySelectorAll('.js-hud-cabinet-num').forEach((el) => {
-                    el.textContent = String(cabinetCur);
-                });
-                root.querySelectorAll('.js-hud-cabinet-cap').forEach((el) => {
-                    el.textContent = String(CABINET_SLOTS);
-                });
-                root.querySelectorAll('.js-hud-matrix-num').forEach((el) => {
-                    el.textContent = String(matrixLit);
-                });
-                root.querySelectorAll('.js-hud-matrix-cap').forEach((el) => {
-                    el.textContent = String(matrixCap);
-                });
-                const hintEl = root.querySelector('.js-hud-hint');
-                if (!hintEl) return;
-                if (matrixLit < matrixCap && cabinetCur < CABINET_SLOTS) {
-                    hintEl.textContent = `还可点亮 ${matrixCap - matrixLit} 个图鉴格`;
-                    hintEl.classList.remove('hidden');
-                } else if (cabinetCur >= CABINET_SLOTS) {
-                    hintEl.textContent = '见闻格已满，整理橱柜后可再收纳';
-                    hintEl.classList.remove('hidden');
-                } else if (matrixLit >= matrixCap) {
-                    hintEl.textContent = '图鉴矩阵已满～继续旅行加厚见闻簿';
-                    hintEl.classList.remove('hidden');
-                } else {
-                    hintEl.textContent = '';
-                    hintEl.classList.add('hidden');
-                }
-            });
-        } catch (e) {
-            console.warn('[refreshGameProgressHud]', e);
-        }
-    }
+    const cabinetPlaceholderHTML = `<div class="cabinet-slot cabinet-slot--empty" data-placeholder="cabinet-empty"><div class="cabinet-slot__media"><img src="assets/cabinet-empty.svg" alt="橱柜" class="cabinet-empty-icon" width="40" height="40"></div><span class="text-[10px]">去旅行解锁</span></div>`;
 
     // --- 记忆墙渲染：随机散落在墙上的拍立得 ---
     function renderMemoryWall() {
@@ -13970,7 +13900,6 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
         cabinetGrid.innerHTML = html;
         void hydrateDiaryImagesInRoot(cabinetGrid);
-        if (typeof refreshGameProgressHud === 'function') refreshGameProgressHud();
     }
 
     function escapeHtml(s) {
