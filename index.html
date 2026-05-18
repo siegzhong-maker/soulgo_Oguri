@@ -2321,6 +2321,31 @@
             0%, 100% { transform: scale(1); opacity: 0.88; }
             50% { transform: scale(1.12); opacity: 1; }
         }
+
+        /* 打卡加载：分段步骤点 */
+        .checkin-load-steps {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .checkin-load-steps .checkin-load-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 9999px;
+            background: rgba(255, 134, 165, 0.22);
+            box-shadow: inset 0 0 0 1px rgba(255, 134, 165, 0.35);
+        }
+        .checkin-load-steps .checkin-load-dot.checkin-load-dot--on {
+            background: linear-gradient(135deg, #ffcad4 0%, #ffb5c8 55%, #a2d2ff 100%);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 2px 6px rgba(255, 134, 165, 0.35);
+        }
+
+        /* 奖励图「揭幕」前弱显 */
+        #reward-image.reward-image--teaser-preview {
+            opacity: 0.12;
+            filter: blur(6px);
+            transition: opacity 0.35s ease, filter 0.35s ease;
+        }
     </style>
 </head>
 <body>
@@ -2330,6 +2355,12 @@
     <i class="ph ph-device-mobile text-lg text-[#ff8fab]"></i>
     <span id="layout-toggle-label">横屏</span>
 </button>
+
+<!-- 日记领取收集物：底部轻提示（固定在视口，避免被 app-container overflow 裁切） -->
+<div id="collect-unbox-strip" class="hidden fixed left-1/2 -translate-x-1/2 z-[105] max-w-[min(92vw,340px)] px-3 py-2 rounded-2xl bg-[#3d3428]/92 text-white text-[10px] font-medium text-center shadow-xl pointer-events-none" style="bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);" role="status" aria-live="polite">
+    <div id="collect-unbox-strip-msg" class="leading-snug"></div>
+    <div id="collect-unbox-strip-dots" class="flex justify-center gap-1.5 mt-1.5"></div>
+</div>
 
 <div id="app-container">
     <!-- 内容槽：两个 Tab 共用同一高度，互不挤压 -->
@@ -2377,6 +2408,12 @@
                 <h3 class="text-gray-700 font-bold mb-3 flex items-center gap-2 text-sm">
                     <i class="ph-fill ph-map-pin text-[#ff8fab]"></i> 记录新旅程
                 </h3>
+                <div id="game-progress-hud-map" class="game-progress-hud mb-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] font-bold text-[#5c4a3a]/92 px-2 py-1 rounded-xl bg-[#fffaf7]/95 border border-[#eaddcf]/80">
+                    <span class="inline-flex items-center gap-0.5 whitespace-nowrap"><i class="ph-fill ph-suitcase-simple text-[10px]" aria-hidden="true"></i>见闻 <strong class="font-extrabold js-hud-cabinet-num">0</strong>/<span class="js-hud-cabinet-cap">100</span></span>
+                    <span class="text-[#bcaaa4]" aria-hidden="true">·</span>
+                    <span class="inline-flex items-center gap-0.5 whitespace-nowrap"><i class="ph-fill ph-squares-four text-[10px]" aria-hidden="true"></i>图鉴 <strong class="font-extrabold js-hud-matrix-num">0</strong>/<span class="js-hud-matrix-cap">0</span></span>
+                    <span class="js-hud-hint hidden basis-full text-center font-medium text-[9px] text-[#795548]/88 leading-tight"></span>
+                </div>
                 <div class="flex gap-2 min-w-0">
                     <input type="text" id="location-input" placeholder="输入地点，如：武汉" class="flex-1 min-w-0 bg-white border-2 border-transparent focus:border-[#ff8fab] rounded-2xl px-4 py-3 outline-none shadow-sm text-gray-700 transition-all">
                     <button id="btn-checkin" class="flex-shrink-0 bg-[#ff8fab] hover:bg-[#ff7b9c] text-white font-bold rounded-2xl px-4 py-3 transition-colors shadow-md whitespace-nowrap text-sm">
@@ -2406,6 +2443,7 @@
                             <div class="min-w-0 flex-1">
                                 <p id="checkin-load-status" class="text-xs font-bold leading-snug text-gray-800">正在处理…</p>
                                 <p id="checkin-load-subline" class="text-[10px] text-gray-500 leading-snug mt-0.5">小爪子在飞奔，请稍等一小会儿</p>
+                                <div id="checkin-load-steps" class="checkin-load-steps mt-1.5 hidden" aria-hidden="true"></div>
                             </div>
                         </div>
                     </div>
@@ -2452,6 +2490,13 @@
                         <i class="ph-fill ph-book-open text-sm"></i>
                     </button>
                 </header>
+                <!-- 轻量进度 HUD：见闻格 + 图鉴矩阵格 -->
+                <div id="game-progress-hud-pet" class="game-progress-hud mt-0.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] font-bold text-[#5c4a3a]/92 max-w-[min(100%,360px)] px-2 py-0.5 rounded-full bg-white/55 border border-[#e8dfd0]/85">
+                    <span class="inline-flex items-center gap-0.5 whitespace-nowrap"><i class="ph-fill ph-suitcase-simple text-[10px]" aria-hidden="true"></i>见闻 <strong class="font-extrabold js-hud-cabinet-num">0</strong>/<span class="js-hud-cabinet-cap">100</span></span>
+                    <span class="text-[#bcaaa4]" aria-hidden="true">·</span>
+                    <span class="inline-flex items-center gap-0.5 whitespace-nowrap"><i class="ph-fill ph-squares-four text-[10px]" aria-hidden="true"></i>图鉴 <strong class="font-extrabold js-hud-matrix-num">0</strong>/<span class="js-hud-matrix-cap">0</span></span>
+                    <span class="js-hud-hint hidden basis-full text-center font-medium text-[9px] text-[#795548]/88 leading-tight pt-0.5"></span>
+                </div>
                 <!-- 状态与心情合并为一行，更紧凑 -->
                 <div class="mt-0.5 w-full flex flex-row flex-wrap items-center justify-between gap-2 min-w-0">
                     <div id="pet-status-bar" class="text-xs font-bold text-gray-600 truncate min-w-0 flex-1">
@@ -3695,6 +3740,11 @@
         if (soulgoSuppressPersistence) return;
         try {
             localStorage.setItem(APP_STATE_KEY, JSON.stringify(appState));
+            try {
+                if (typeof refreshGameProgressHud === 'function') refreshGameProgressHud();
+            } catch (hudErr) {
+                /* noop */
+            }
         } catch (e) {
             if (e && e.name === 'QuotaExceededError') {
                 console.warn('[saveState] QuotaExceededError, gradual diary trim…');
@@ -4384,17 +4434,77 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     const checkinToast = document.getElementById('checkin-toast');
     const checkinLoadBanner = document.getElementById('checkin-load-banner');
     const checkinLoadStatusEl = document.getElementById('checkin-load-status');
-    function setCheckinLoadingUi(active, message) {
+    const checkinLoadSublineEl = document.getElementById('checkin-load-subline');
+    const checkinLoadStepsEl = document.getElementById('checkin-load-steps');
+    function setCheckinLoadingUi(active, message, opts) {
+        opts = opts || {};
         if (!checkinLoadBanner) return;
         if (active) {
             checkinLoadBanner.classList.remove('hidden');
             checkinLoadBanner.setAttribute('aria-busy', 'true');
             if (checkinLoadStatusEl && message) checkinLoadStatusEl.textContent = message;
+            if (checkinLoadSublineEl) {
+                if (opts.subline) {
+                    checkinLoadSublineEl.textContent = opts.subline;
+                } else if (opts.stepIndex && opts.stepTotal) {
+                    checkinLoadSublineEl.textContent = `进度 ${opts.stepIndex}/${opts.stepTotal} · 小爪子在认真写`;
+                } else {
+                    checkinLoadSublineEl.textContent = '小爪子在飞奔，请稍等一小会儿';
+                }
+            }
+            if (checkinLoadStepsEl && opts.stepTotal) {
+                checkinLoadStepsEl.classList.remove('hidden');
+                const cur = Math.min(opts.stepTotal, Math.max(1, opts.stepIndex || 1));
+                const tot = opts.stepTotal;
+                let dots = '';
+                for (let i = 1; i <= tot; i += 1) {
+                    dots += `<span class="checkin-load-dot${i <= cur ? ' checkin-load-dot--on' : ''}" aria-hidden="true"></span>`;
+                }
+                checkinLoadStepsEl.innerHTML = dots;
+            } else if (checkinLoadStepsEl) {
+                checkinLoadStepsEl.classList.add('hidden');
+                checkinLoadStepsEl.innerHTML = '';
+            }
         } else {
             checkinLoadBanner.classList.add('hidden');
             checkinLoadBanner.removeAttribute('aria-busy');
+            if (checkinLoadStepsEl) {
+                checkinLoadStepsEl.classList.add('hidden');
+                checkinLoadStepsEl.innerHTML = '';
+            }
+            if (checkinLoadSublineEl) {
+                checkinLoadSublineEl.textContent = '小爪子在飞奔，请稍等一小会儿';
+            }
         }
     }
+
+    /** 「旅行日记」领取收集物：底部轻提示 + 节拍点 */
+    function setCollectUnboxStrip(active, opts) {
+        opts = opts || {};
+        const strip = document.getElementById('collect-unbox-strip');
+        const msgEl = document.getElementById('collect-unbox-strip-msg');
+        const dotsEl = document.getElementById('collect-unbox-strip-dots');
+        if (!strip || !msgEl || !dotsEl) return;
+        if (!active) {
+            strip.classList.add('hidden');
+            msgEl.textContent = '';
+            dotsEl.innerHTML = '';
+            return;
+        }
+        strip.classList.remove('hidden');
+        msgEl.textContent = opts.message || '正在挑纪念品…';
+        const step = opts.step || 1;
+        const total = opts.total || 3;
+        let dots = '';
+        for (let i = 1; i <= total; i += 1) {
+            dots +=
+                '<span class="inline-block w-1.5 h-1.5 rounded-full ' +
+                (i <= step ? 'bg-[#ff8fab]' : 'bg-white/30') +
+                '" aria-hidden="true"></span>';
+        }
+        dotsEl.innerHTML = dots;
+    }
+
     const checkinListPanel = document.getElementById('checkin-list-panel');
     const checkinList = document.getElementById('checkin-list');
     const checkinListEmpty = document.getElementById('checkin-list-empty');
@@ -7486,8 +7596,10 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             return;
         }
         diaryAutoCollectPending.add(id);
+        setCollectUnboxStrip(true, { message: '先读 Soul 和地点上下文…', step: 1, total: 3 });
         try {
             await ensureBadgeManifestLoaded();
+            setCollectUnboxStrip(true, { message: '正在从备忘录里挑一枚合眼缘的…', step: 2, total: 3 });
             const diaryText = getDiaryTextForCollectContext(id);
             const memoryTag = inferMemoryTagFromContext(location, null, diaryText);
             const mainResolve = await resolveMainCollectibleSceneForDiary(id, location, memoryTag);
@@ -7501,6 +7613,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 return;
             }
             const result = { main: null, bonus: null };
+            setCollectUnboxStrip(true, { message: '开箱揭晓，准备入柜咯～', step: 3, total: 3 });
             const outMain = grantDiaryCollectibleToCabinet(id, location, mainResolve.scene, mainResolve.ragSource, {
                 deferModal: true,
                 markClaim: false
@@ -7553,6 +7666,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
         } finally {
             diaryAutoCollectPending.delete(id);
+            setCollectUnboxStrip(false);
         }
     }
 
@@ -9530,6 +9644,49 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         openModal('旅行日记', bodyHTML, 'diary');
     }
 
+    /** 低成本「养成回响」：无「刚打卡」高亮时的随机碎碎念（限频以免吵） */
+    function maybeShowAmbientNurtureEcho() {
+        if (typeof showPetMessage !== 'function') return;
+        try {
+            if (roomHint && roomHint.classList.contains('active')) return;
+            const raw = parseInt(sessionStorage.getItem('soulgo_ambient_echo_sess') || '0', 10) || 0;
+            if (raw >= 4) return;
+            if (Math.random() > 0.4) return;
+            sessionStorage.setItem('soulgo_ambient_echo_sess', String(raw + 1));
+
+            function clip(str, max) {
+                const s = String(str || '').replace(/\s+/g, ' ').trim();
+                if (!s) return '';
+                return s.length > max ? s.slice(0, max - 1) + '…' : s;
+            }
+
+            const pet = appState.petPersonality || '小粟';
+            const cabinet = appState.cabinetItems || [];
+            const epis = ((appState.memories && appState.memories.episodic) || []).filter((m) => m && m.category === 'travel');
+
+            let line = '';
+            if (cabinet.length && Math.random() < 0.55) {
+                const it = cabinet[0];
+                const lab = typeof getShortLabel === 'function' ? getShortLabel(it).short : '';
+                const label =
+                    clip(lab, 14) ||
+                    clip(it && it.scene && it.scene.label, 14) ||
+                    '新来的小摆件';
+                line = `${pet}又瞄了一眼「${label}」，好像还在回味那次旅行的味道～`;
+            } else if (epis.length) {
+                const m = epis[0];
+                const city = clip(m.location_city || m.location || '那次旅行', 8);
+                const snip =
+                    clip(m.summary || m.narration || m.text || '', 36) ||
+                    '那一小段走过的路';
+                line = `${pet}还在惦记【${city}】那次旅行呢——「${snip}」，我都帮你记在安全的地方啦～`;
+            }
+            if (line) showPetMessage(line, { duration: 3800 });
+        } catch (e) {
+            /* noop */
+        }
+    }
+
     function enterPetRoom() {
         const hasUnread = (diaryBadge && !diaryBadge.classList.contains('hidden')) || (petRoomBadge && !petRoomBadge.classList.contains('hidden'));
         if (hasUnread) {
@@ -9582,6 +9739,8 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
             appState.lastCheckinHighlight = null;
             saveState();
+        } else {
+            maybeShowAmbientNurtureEcho();
         }
 
         // 根据橱柜是否有未读新物品同步红点显示（用户打开橱柜后才清除）
@@ -10228,7 +10387,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             
             // 1. 在地图上随机位置生成打卡图钉
             addMapPin(location);
-            setCheckinLoadingUi(true, '正在写旅行日记…');
+            setCheckinLoadingUi(true, '正在写旅行日记…', {
+                stepIndex: 1,
+                stepTotal: 2,
+                subline: '把今天的脚印变成文字，等一下下就有日记啦～'
+            });
 
             let diaryText = '';
             let usedFallback = false;
@@ -10278,7 +10441,11 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             }
 
             const checkinDateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
-            setCheckinLoadingUi(true, '正在整理旅行记忆…');
+            setCheckinLoadingUi(true, '正在整理旅行记忆…', {
+                stepIndex: 2,
+                stepTotal: 2,
+                subline: '把味道与心情收成一张小纸条，以后还能翻～'
+            });
 
             let summaryFromLLM = null;
             let emotionFromLLM = null;
@@ -12186,6 +12353,58 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     const CABINET_SLOTS = 100;
         const cabinetPlaceholderHTML = `<div class="cabinet-slot cabinet-slot--empty" data-placeholder="cabinet-empty"><div class="cabinet-slot__media"><img src="assets/cabinet-empty.svg" alt="橱柜" class="cabinet-empty-icon" width="40" height="40"></div><span class="text-[10px]">去旅行解锁</span></div>`;
 
+    /** 轻量 HUD：见闻格占用 + 图鉴矩阵格子点亮数（不按筛选，只看总盘） */
+    function refreshGameProgressHud() {
+        try {
+            const items = appState.cabinetItems || [];
+            const cabinetCur = Math.min(items.length, CABINET_SLOTS);
+            const cats = visibleCollectMatrixCategories();
+            const matrixCap = Math.max(1, cats.length * 4);
+            const filt = normalizeCabinetMatrixFilters(MATRIX_DEFAULT_FILTERS);
+            const buckets = buildCollectMatrixBuckets(items, filt);
+            let matrixLit = 0;
+            cats.forEach((c) => {
+                ['S', 'A', 'B', 'C'].forEach((tier) => {
+                    const bucket = buckets[c.id];
+                    const cellList = bucket && bucket[tier] ? bucket[tier] : [];
+                    if (cellList.length > 0) matrixLit += 1;
+                });
+            });
+
+            document.querySelectorAll('.game-progress-hud').forEach((root) => {
+                root.querySelectorAll('.js-hud-cabinet-num').forEach((el) => {
+                    el.textContent = String(cabinetCur);
+                });
+                root.querySelectorAll('.js-hud-cabinet-cap').forEach((el) => {
+                    el.textContent = String(CABINET_SLOTS);
+                });
+                root.querySelectorAll('.js-hud-matrix-num').forEach((el) => {
+                    el.textContent = String(matrixLit);
+                });
+                root.querySelectorAll('.js-hud-matrix-cap').forEach((el) => {
+                    el.textContent = String(matrixCap);
+                });
+                const hintEl = root.querySelector('.js-hud-hint');
+                if (!hintEl) return;
+                if (matrixLit < matrixCap && cabinetCur < CABINET_SLOTS) {
+                    hintEl.textContent = `还可点亮 ${matrixCap - matrixLit} 个图鉴格`;
+                    hintEl.classList.remove('hidden');
+                } else if (cabinetCur >= CABINET_SLOTS) {
+                    hintEl.textContent = '见闻格已满，整理橱柜后可再收纳';
+                    hintEl.classList.remove('hidden');
+                } else if (matrixLit >= matrixCap) {
+                    hintEl.textContent = '图鉴矩阵已满～继续旅行加厚见闻簿';
+                    hintEl.classList.remove('hidden');
+                } else {
+                    hintEl.textContent = '';
+                    hintEl.classList.add('hidden');
+                }
+            });
+        } catch (e) {
+            console.warn('[refreshGameProgressHud]', e);
+        }
+    }
+
     // --- 记忆墙渲染：随机散落在墙上的拍立得 ---
     function renderMemoryWall() {
         const wall = document.getElementById('memory-wall');
@@ -13751,6 +13970,7 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
 
         cabinetGrid.innerHTML = html;
         void hydrateDiaryImagesInRoot(cabinetGrid);
+        if (typeof refreshGameProgressHud === 'function') refreshGameProgressHud();
     }
 
     function escapeHtml(s) {
@@ -14220,7 +14440,23 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     let currentRewardItem = null;
     let currentRewardItems = [];
     let currentRewardIndex = 0;
+    let rewardRevealTimer = null;
     let rewardAnchorSyncBound = false;
+
+    /** B/A/S 档旅行纪念品：开箱前留出短暂「揭晓间隙」增强节拍感（C 档秒开） */
+    function getRewardStagedRevealDelayMs(items) {
+        const tierOrder = { S: 4, A: 3, B: 2, C: 1 };
+        let best = 'C';
+        (items || []).forEach((it) => {
+            if (!it || !it.scene) return;
+            const t = String(it.tier || 'C').toUpperCase();
+            if ((tierOrder[t] || 1) > (tierOrder[best] || 1)) best = t;
+        });
+        if (best === 'S') return 580;
+        if (best === 'A') return 480;
+        if (best === 'B') return 360;
+        return 0;
+    }
 
     function clearRewardModalAnchor(modal) {
         if (!modal) return;
@@ -14294,7 +14530,9 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         indexEl.textContent = `${activeIndex + 1}/${count}`;
     }
 
-    function renderRewardModalItem(item) {
+    function renderRewardModalItem(item, renderOpts) {
+        renderOpts = renderOpts || {};
+        const preview = !!(renderOpts && renderOpts.preview);
         const modal = document.getElementById('reward-modal');
         const panel = document.getElementById('reward-panel');
         const img = document.getElementById('reward-image');
@@ -14319,12 +14557,44 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
                 obtainedLocation: item.location || (item.scene && item.scene.regionLabel) || '旅行记忆'
             };
             currentRewardItem._alreadyInCabinet = true;
-            if (titleEl) titleEl.textContent = '✨ 解锁远行场景 ✨';
-            bindImgSrcWithIdbHydrate(img, item.scene.image, modal);
-            name.textContent = item.scene.label || '远行场景';
             const tier = (item.tier || 'C').toUpperCase();
             const tc = TIER_CONFIG[tier] || TIER_CONFIG.C;
-            if (badgesEl) badgesEl.innerHTML = `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold ${tc.class}"><i class="ph-fill ${tc.icon} text-[10px]"></i> ${tc.label}</span>`;
+            if (badgesEl) {
+                badgesEl.innerHTML =
+                    `<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-bold ${tc.class}"><i class="ph-fill ${tc.icon} text-[10px]"></i> ${tc.label}</span>`;
+            }
+            if (preview) {
+                if (titleEl) titleEl.textContent = '✨ 正在拆开纪念包…';
+                if (name) name.textContent = '先忍住，不看～';
+                if (hintEl) {
+                    hintEl.textContent =
+                        tier === 'S'
+                            ? '🌟 超强讯号先抵达，小礼物马上露面…'
+                            : tier === 'A'
+                              ? '✨ 捕捉到一点闪光 signal…'
+                              : tier === 'B'
+                                ? '好像摸到一个还不错的小彩蛋…'
+                                : '🎁 我把今天的味道包起来啦——';
+                    const dbg = formatCollectDecisionHint();
+                    if (dbg) hintEl.textContent += dbg;
+                }
+                if (img) {
+                    img.classList.remove('animate-[pulse_1s_ease-in-out_infinite]');
+                    img.classList.add('reward-image--teaser-preview');
+                    img.src = DIARY_IMG_PLACEHOLDER_PIXEL;
+                    img.alt = '';
+                }
+                setRewardSwitcherVisible(currentRewardItems, currentRewardIndex);
+                return;
+            }
+
+            if (titleEl) titleEl.textContent = '✨ 解锁远行场景 ✨';
+            if (img) {
+                img.classList.remove('reward-image--teaser-preview');
+                img.alt = 'New Item';
+            }
+            bindImgSrcWithIdbHydrate(img, item.scene.image, modal);
+            name.textContent = item.scene.label || '远行场景';
             if (hintEl) {
                 const locLabel = (ragSource && ragSource.relatedLocation) || item.location || '';
                 if (ragSource && (ragSource.displayName || ragSource.relatedLocation)) {
@@ -14367,6 +14637,10 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
             };
             if (panel) panel.classList.add('ui-reward-panel--daily');
             if (titleEl) titleEl.textContent = '收到一件灵感小物';
+            if (img) {
+                img.classList.remove('reward-image--teaser-preview');
+                img.alt = 'New Item';
+            }
             bindImgSrcWithIdbHydrate(img, item.image_url, modal);
             name.textContent = item.item_name || '神秘纪念品';
             if (badgesEl) {
@@ -14386,18 +14660,38 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
         const panel = document.getElementById('reward-panel');
         const list = Array.isArray(itemOrItems) ? itemOrItems.filter(Boolean) : [itemOrItems].filter(Boolean);
         if (list.length === 0 || !modal || !panel) return;
+        if (rewardRevealTimer != null) {
+            clearTimeout(rewardRevealTimer);
+            rewardRevealTimer = null;
+        }
         ensureRewardAnchorSyncBound();
         applyRewardModalAnchor();
         currentRewardItems = list;
         const partnerIndex = list.findIndex((x) => x && x.ragSource && x.ragSource.kind === 'partner_unlock');
         currentRewardIndex = partnerIndex >= 0 ? partnerIndex : 0;
-        renderRewardModalItem(list[currentRewardIndex]);
 
-        modal.classList.remove('hidden');
-        setTimeout(() => {
-            panel.classList.remove('scale-95', 'opacity-0');
-            panel.classList.add('scale-100', 'opacity-100');
-        }, 10);
+        const hasSceneReveal = list.some((x) => x && x.scene);
+        const delay = hasSceneReveal ? getRewardStagedRevealDelayMs(list) : 0;
+
+        const popPanelOpen = () => {
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                panel.classList.remove('scale-95', 'opacity-0');
+                panel.classList.add('scale-100', 'opacity-100');
+            });
+        };
+
+        if (delay > 0 && hasSceneReveal) {
+            renderRewardModalItem(list[currentRewardIndex], { preview: true });
+            popPanelOpen();
+            rewardRevealTimer = setTimeout(() => {
+                rewardRevealTimer = null;
+                renderRewardModalItem(list[currentRewardIndex], { preview: false });
+            }, delay);
+        } else {
+            renderRewardModalItem(list[currentRewardIndex]);
+            popPanelOpen();
+        }
     }
 
     // 绑定奖励弹窗按钮事件
@@ -14429,19 +14723,31 @@ summary 30～50 字，第一人称「我」，可带味道、食材、天气与�
     if (rewardSwitchTab0) {
         rewardSwitchTab0.addEventListener('click', () => {
             if (!Array.isArray(currentRewardItems) || currentRewardItems.length < 2) return;
+            if (rewardRevealTimer != null) {
+                clearTimeout(rewardRevealTimer);
+                rewardRevealTimer = null;
+            }
             currentRewardIndex = 0;
-            renderRewardModalItem(currentRewardItems[0]);
+            renderRewardModalItem(currentRewardItems[0], { preview: false });
         });
     }
     if (rewardSwitchTab1) {
         rewardSwitchTab1.addEventListener('click', () => {
             if (!Array.isArray(currentRewardItems) || currentRewardItems.length < 2) return;
+            if (rewardRevealTimer != null) {
+                clearTimeout(rewardRevealTimer);
+                rewardRevealTimer = null;
+            }
             currentRewardIndex = 1;
-            renderRewardModalItem(currentRewardItems[1]);
+            renderRewardModalItem(currentRewardItems[1], { preview: false });
         });
     }
 
     function closeRewardModal() {
+        if (rewardRevealTimer != null) {
+            clearTimeout(rewardRevealTimer);
+            rewardRevealTimer = null;
+        }
         const modal = document.getElementById('reward-modal');
         const panel = document.getElementById('reward-panel');
         if (panel) panel.classList.remove('ui-reward-panel--daily');
